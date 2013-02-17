@@ -2,6 +2,8 @@
 <html lang="en-US">
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="user-scalable=no">
+
 	<title>Game Land</title>
 
 	<link rel="stylesheet" href="styles/main.css">
@@ -12,16 +14,41 @@
 </head>
 <body>
 	<div id="game">
-		<div class="screen" id="loading-screen">
+		<!-- Loading/Splash Screen -->
+		<div class="screen" id="splash-screen">
 			<img class="logo" src="images/logo.jpg"><br>
 			<span>(this is the loading screen)</span><br>
 			<span class="continue">Click to continue</span>
 		</div>
+
+		<!-- Installation prompt displayed on iPad -->
 		<div class="screen" id="install-screen"></div>
-		<div class="screen" id="select-game"></div>
+
+		<!-- Main menu and game selection screen -->
+		<div class="screen" id="main-menu">
+			<!-- Temporary list view to test changing screens -->
+			<!-- Will be replaced by fancy screen following design -->
+			<span>(this is the main menu)</span><br>
+			<ul class="games-menu">
+				<li><button name="bear-hunt">BEAR HUNT</button>
+				<li><button name="game2">GAME 2</button>
+				<li><button name="game3">GAME 3</button>
+				<li><button name="game4">GAME 4</button>
+				<li><button name="game5">GAME 5</button>
+			</ul>
+			<div class="main-menu">
+				<button name="help-screen">HELP</button>
+				<button name="high-scores">HIGH SCORES</button>
+				<button name="settings-screen">SETTINGS</button>
+			</div>
+		</div>
+
 		<div class="screen" id="help-screen"></div>
+
 		<div class="screen" id="high-scores"></div>
+
 		<div class="screen" id="settings-screen"></div>
+
 		<div class="screen" id="bear-hunt"></div>
 	</div>
 </body>

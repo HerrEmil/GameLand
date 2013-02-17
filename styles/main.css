@@ -31,10 +31,13 @@ body {
 #game .screen.active {
 	display: block;
 }
-#loading-screen {
+#splash-screen {
 	text-align: center;
 }
-#loading-screen .continue {
+#splash-screen .continue {
 	cursor: pointer;
 	font-size: 70px;
+}
+#main-menu {
+	background-image: url('../images/main-menu.jpg');
 }

@@ -8,10 +8,15 @@ carny.game = (function () {
 		var activeScreen = $("#game .screen.active")[0],
 			screen = $("#" + screenId)[0];
 
+		// Hide old screen html
 		if (activeScreen) {
-			dom.removeClass(screen, "active");
+			dom.removeClass(activeScreen, "active");
 		}
 
+		// Run the screen module
+		carny.screens[screenId].run();
+
+		//  Display the screen html
 		dom.addClass(screen, "active");
 	}
 	//  Expose public methods
