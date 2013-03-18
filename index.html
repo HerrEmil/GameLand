@@ -3,11 +3,13 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="user-scalable=no">
+	<meta name="apple-mobile-web-app-capable" content="yes">
 
 	<title>Game Land</title>
 
 	<link rel="stylesheet" href="styles/main.css">
 	<link rel="stylesheet" href="styles/fontfaces.css">
+	<link rel="stylesheet" href="styles/mobile.css" media="screen and (max-device-width: 768px) and (orientation: portrait), screen and (max-device-width: 1024px) and (orientation: landscape)">
 
 	<script src="scripts/modernizr.js"></script>
 	<script src="scripts/loader.js"></script>
@@ -22,21 +24,24 @@
 		</div>
 
 		<!-- Installation prompt displayed on iPad -->
-		<div class="screen" id="install-screen"></div>
+		<div class="screen" id="install-screen">
+			<img class="logo" src="images/logo.jpg"><br>
+			<span>Click the <img src="images/install-icon.png" alt="Install icon"> button and Add to Home Screen to install Game Land!</span>
+		</div>
 
 		<!-- Main menu and game selection screen -->
 		<div class="screen" id="main-menu">
 			<!-- Temporary list view to test changing screens -->
 			<!-- Will be replaced by fancy screen following design -->
 			<span>(this is the main menu)</span><br>
-			<ul class="games-menu">
+			<ul id="games-menu">
 				<li><button name="bear-hunt">BEAR HUNT</button>
 				<li><button name="game2">GAME 2</button>
 				<li><button name="game3">GAME 3</button>
 				<li><button name="game4">GAME 4</button>
-				<li><button name="game5">GAME 5</button>
+				<li><button name="snake">SNAKE TEST</button>
 			</ul>
-			<div class="main-menu">
+			<div>
 				<button name="help-screen">HELP</button>
 				<button name="high-scores">HIGH SCORES</button>
 				<button name="settings-screen">SETTINGS</button>
@@ -50,6 +55,11 @@
 		<div class="screen" id="settings-screen"></div>
 
 		<div class="screen" id="bear-hunt"></div>
+
+		<div class="screen" id="snake">
+			<!-- Canvas object -->
+			<!-- buttons -->
+		</div>
 	</div>
 </body>
 </html>
