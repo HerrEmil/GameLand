@@ -24,6 +24,7 @@ window.addEventListener("load", function () {
 			yep : "scripts/screen.splash.js",
 			nope : "scripts/screen.splash-install.js",
 			complete : function () {
+				jewel.game.setup();
 				if (Modernizr.standalone) {
 					carny.game.showScreen("splash-screen");
 				} else {
