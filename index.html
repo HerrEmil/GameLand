@@ -3,14 +3,13 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="user-scalable=no">
-	<meta name="description" content="Game Land by Emil">
+	<meta name="description" content="Pre-alpha version of upcoming web game Game Land by Emil.">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 
 	<title>Game Land</title>
-	<meta name="description" content="pre-alpha version of upcoming game Game Land">
 
 	<!-- Style Sheets -->
- 	<link rel="stylesheet" href="styles/main.css">
+	<link rel="stylesheet" href="styles/main.css">
 	<link rel="stylesheet" href="styles/fontfaces.css">
 	<link rel="stylesheet" href="styles/mobile.css" media="screen and (max-device-width: 768px) and (orientation: portrait), screen and (max-device-width: 1024px) and (orientation: landscape)">
 
@@ -24,46 +23,40 @@
 	<link rel="apple-touch-startup-image" href="images/ios-startup-768x1004.png" media="screen and (min-device-width: 768px) and (orientation:portrait)">
 	<link rel="apple-touch-startup-image" href="images/ios-startup-320x460.png" media="screen and (max-device-width: 320px)">
 
-	<!-- iOS status bar style -->
-	<!-- Note to self: check if it can be removed completely -->
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
 
-	<!-- Scripts -->
-	<!-- Note to self: Test speed when loading at end of document -->
-	<script src="scripts/modernizr.js"></script>
-	<script src="scripts/loader.js"></script>
+	<!-- Preload critical font -->
+	<link rel="preload" href="fonts/roboto-regular.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
 	<div id="game">
 		<!-- Loading/Splash Screen -->
 		<div class="screen" id="splash-screen">
-			<img class="logo" src="images/logo.jpg"><br>
+			<img class="logo" src="images/logo.jpg" alt="Game Land logo"><br>
 			<span>(this is the loading screen)</span><br>
 			<span class="continue">Click to continue</span>
 		</div>
 
 		<!-- Installation prompt displayed on iPad -->
 		<div class="screen" id="install-screen">
-			<img class="logo" src="images/logo.jpg"><br>
+			<img class="logo" src="images/logo.jpg" alt="Game Land logo"><br>
 			<span>Click the <img src="images/install-icon.png" alt="Install icon"> button and Add to Home Screen to install Game Land!</span>
 		</div>
 
 		<!-- Main menu and game selection screen -->
 		<div class="screen" id="main-menu">
-			<!-- Temporary list view to test changing screens -->
-			<!-- Will be replaced by fancy screen following design -->
 			<span>(this is the main menu)</span><br>
 			<ul id="games-menu">
-				<li><button name="bear-hunt">BEAR HUNT</button>
-				<li><button name="game2">GAME 2</button>
-				<li><button name="game3">GAME 3</button>
-				<li><button name="game4">GAME 4</button>
-				<li><button name="snake">SNAKE TEST</button>
+				<li><button type="button" name="bear-hunt">BEAR HUNT</button></li>
+				<li><button type="button" name="game2">GAME 2</button></li>
+				<li><button type="button" name="game3">GAME 3</button></li>
+				<li><button type="button" name="game4">GAME 4</button></li>
+				<li><button type="button" name="snake">SNAKE TEST</button></li>
 			</ul>
 			<div>
-				<button name="help-screen">HELP</button>
-				<button name="high-scores">HIGH SCORES</button>
-				<button name="settings-screen">SETTINGS</button>
+				<button type="button" name="help-screen">HELP</button>
+				<button type="button" name="high-scores">HIGH SCORES</button>
+				<button type="button" name="settings-screen">SETTINGS</button>
 			</div>
 		</div>
 
@@ -80,5 +73,6 @@
 			<!-- buttons -->
 		</div>
 	</div>
+	<script src="scripts/loader.js" defer></script>
 </body>
 </html>

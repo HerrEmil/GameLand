@@ -1,34 +1,34 @@
 carny.dom = (function () {
-	var $ = Sizzle;
+	function $(selector) {
+		return document.querySelectorAll(selector);
+	}
 
 	function hasClass(el, clsName) {
-		var regex = new RegExp("(^|\\s)" + clsName + "(\\s|$)");
-		return regex.test(el.className);
+		return el.classList.contains(clsName);
 	}
 
 	function addClass(el, clsName) {
-		if (!hasClass(el, clsName)) {
-			el.className += " " + clsName;
-		}
+		el.classList.add(clsName);
 	}
 
 	function removeClass(el, clsName) {
-		var regex = new RegExp("(^|\\s)" + clsName + "(\\s|$)");
-		el.className = el.className.replace(regex, " ");
+		el.classList.remove(clsName);
 	}
 
 	function bind(element, event, handler) {
-		if (typeof element == "string") {
-			element = $(element)[0];
+		if (typeof element === "string") {
+			element = document.querySelector(element);
 		}
-		element.addEventListener(event, handler, false);
+		if (element) {
+			element.addEventListener(event, handler, false);
+		}
 	}
 
 	return {
-		$ : $,
-		hasClass : hasClass,
-		addClass : addClass,
-		removeClass : removeClass,
-		bind : bind
+		$: $,
+		hasClass: hasClass,
+		addClass: addClass,
+		removeClass: removeClass,
+		bind: bind
 	};
 }());

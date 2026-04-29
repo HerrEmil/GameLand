@@ -1,44 +1,40 @@
-// Using the namespace carny, just because it's shorter than gameland
-var carny = {
-	screens : {}
-};
+// Bootstrap entry: namespace + sequential script loader.
+// Runs without external feature-detection or selector libs.
+window.carny = window.carny || { screens: {} };
 
-// Wait until main document is loaded
-window.addEventListener("load", function () {
-	// Test if the game is running on an iOS app but not as a web app
-	Modernizr.addTest("standalone", function () {
-		return (window.navigator.standalone !== false);
-	});
-	// loading stage 1
-	Modernizr.load([
-		{
-			// These files are always loaded
-			load : [
-				"scripts/sizzle.js",
-				"scripts/dom.js",
-				"scripts/game.js"
-			]
-		},
-		{
-			test : Modernizr.standalone,
-			yep : "scripts/screen.splash.js",
-			nope : "scripts/screen.splash-install.js",
-			complete : function () {
-				carny.game.setup();
-				if (Modernizr.standalone) {
-					carny.game.showScreen("splash-screen");
-				} else {
-					carny.game.showScreen("install-screen");
-				}
-			}
-		}
-	]);
-	// loading stage 2
-	if (Modernizr.standalone) {
-		Modernizr.load([
-			{
-				load : ["scripts/screen.main-menu.js"]
-			}
-		]);
+(function () {
+	function loadScript(src) {
+		return new Promise(function (resolve, reject) {
+			var s = document.createElement("script");
+			s.src = src;
+			s.async = false;
+			s.onload = resolve;
+			s.onerror = reject;
+			document.head.appendChild(s);
+		});
 	}
-}, false);
+
+	function isStandalone() {
+		return window.navigator.standalone !== false;
+	}
+
+	window.addEventListener("load", function () {
+		Promise.all([
+			loadScript("scripts/dom.js"),
+			loadScript("scripts/game.js")
+		]).then(function () {
+			var splashSrc = isStandalone()
+				? "scripts/screen.splash.js"
+				: "scripts/screen.splash-install.js";
+			return loadScript(splashSrc);
+		}).then(function () {
+			carny.game.setup();
+			carny.game.showScreen(isStandalone() ? "splash-screen" : "install-screen");
+			if (isStandalone()) {
+				return loadScript("scripts/screen.main-menu.js");
+			}
+		}).catch(function (err) {
+			console.error("loader: failed to load script", err);
+		});
+	}, false);
+}());

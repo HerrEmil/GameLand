@@ -15,18 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # If your project has a build step, add it here, e.g.:
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: 22
-      # - run: npm ci && npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
 
       - name: Sync to S3
         run: |
-          aws s3 sync . s3://${{ secrets.S3_BUCKET }}/ \
-            --delete \
-            --exclude ".git/*" \
-            --exclude ".github/*"
+          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET }}/ --delete
 
       - name: Invalidate CloudFront cache
         run: |

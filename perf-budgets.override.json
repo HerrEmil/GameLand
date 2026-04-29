@@ -1,0 +1,19 @@
+{
+  "_note": "GameLand-specific perf debt. Each entry has a sunset date and TODO. Documentation-only; LHCI does not consume this file. Source of truth for assertions is GameLand/lighthouserc.json.",
+  "_overrides": [
+    {
+      "key": "categories:performance",
+      "loosened_to": 0.85,
+      "default": 0.92,
+      "sunset": "2026-07-01",
+      "todo": "Verify mobile perf score on prod URL with current asset profile"
+    },
+    {
+      "key": "categories:accessibility",
+      "loosened_to": 0.85,
+      "default": 1.0,
+      "sunset": "2026-07-01",
+      "todo": "Add semantic markup, button labels, address bar handling for non-iOS"
+    }
+  ]
+}

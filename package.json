@@ -1,0 +1,15 @@
+{
+  "name": "gameland",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Game Land — pre-alpha web game shell.",
+  "scripts": {
+    "build": "node scripts-build/build.mjs"
+  },
+  "devDependencies": {
+    "@size-limit/file": "^11.1.6",
+    "size-limit": "^11.1.6",
+    "stylelint": "^17.9.1",
+    "stylelint-config-standard": "^40.0.0"
+  }
+}

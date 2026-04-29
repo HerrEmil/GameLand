@@ -1,0 +1,19 @@
+name: perf
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+
+jobs:
+  perf:
+    uses: HerrEmil/perf-config/.github/workflows/perf.yml@v1
+    with:
+      site_dir: dist
+      build_cmd: npm run build
+      tier: game
+      package_manager: npm
+      perf_config_ref: v1
