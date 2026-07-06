@@ -4,7 +4,9 @@
   "private": true,
   "description": "Game Land — pre-alpha web game shell.",
   "scripts": {
-    "build": "node scripts-build/build.mjs"
+    "build": "node scripts-build/build.mjs",
+    "lint:css": "stylelint \"styles/**/*.css\"",
+    "size": "size-limit"
   },
   "devDependencies": {
     "@size-limit/file": "^11.1.6",

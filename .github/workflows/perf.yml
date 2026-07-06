@@ -16,4 +16,5 @@ jobs:
       build_cmd: npm run build
       tier: game
       package_manager: npm
+      node_version: "22"
       perf_config_ref: v1

@@ -58,5 +58,6 @@ body {
 }
 
 #main-menu {
-	background-image: url('../images/main-menu.jpg');
+	background-image: url("../images/main-menu.jpg");
+	background-image: image-set(url("../images/main-menu.webp") type("image/webp"), url("../images/main-menu.jpg") type("image/jpeg"));
 }

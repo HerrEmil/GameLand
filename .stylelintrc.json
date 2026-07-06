@@ -2,7 +2,6 @@
   "extends": ["stylelint-config-standard"],
   "rules": {
     "import-notation": "string",
-    "no-invalid-position-at-import-rule": true,
     "at-rule-disallowed-list": [
       ["import"],
       {
@@ -21,18 +20,9 @@
       }
     ],
     "color-no-invalid-hex": true,
-    "no-duplicate-selectors": true,
     "no-empty-source": null,
-    "selector-max-id": null,
-    "selector-max-specificity": null,
     "max-nesting-depth": 3,
-    "comment-no-empty": true,
     "no-descending-specificity": null,
-    "font-family-name-quotes": "always-where-recommended",
-    "shorthand-property-no-redundant-values": true,
-    "declaration-block-no-redundant-longhand-properties": true,
-    "no-duplicate-at-import-rules": true,
-    "media-feature-name-no-unknown": true,
     "property-no-vendor-prefix": null,
     "value-no-vendor-prefix": [true, { "ignoreValues": ["sticky"] }]
   }

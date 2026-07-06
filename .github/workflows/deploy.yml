@@ -15,12 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # perf-config provides the asset-hashing tool the build uses, so the
+      # deployed artifact matches what the perf gate audits.
+      - uses: actions/checkout@v4
+        with:
+          repository: HerrEmil/perf-config
+          path: .perf-config
+          ref: v1
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - run: npm ci
       - run: npm run build
 
       - name: Sync to S3

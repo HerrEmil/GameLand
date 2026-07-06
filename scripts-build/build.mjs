@@ -11,19 +11,20 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 
 const items = ['index.html', 'scripts', 'styles', 'fonts', 'images'];
-for (const item of items) {
-	const src = join(root, item);
-	if (!existsSync(src)) continue;
-	await cp(src, join(dist, item), { recursive: true });
-}
+await Promise.all(
+	items.map((item) => cp(join(root, item), join(dist, item), { recursive: true }))
+);
 
-// Run perf-config hash-assets if present (perf gate provides it under .perf-config/).
-const hashTool = join(root, '.perf-config/tools/hash-assets.mjs');
-if (existsSync(hashTool)) {
+// Hash assets with the shared perf-config tool: CI checks it out under
+// .perf-config/, local dev uses the sibling clone.
+const hashTool = ['.perf-config', '../perf-config']
+	.map((dir) => join(root, dir, 'tools/hash-assets.mjs'))
+	.find((path) => existsSync(path));
+if (hashTool) {
 	const r = spawnSync('node', [hashTool, dist], { stdio: 'inherit' });
 	if (r.status !== 0) process.exit(r.status ?? 1);
 } else {
-	console.log('build: hash-assets tool not found (skipping; perf-gate context only).');
+	console.log('build: hash-assets tool not found (skipping; dist will be unhashed).');
 }
 
 console.log('build: copied site to dist/');
