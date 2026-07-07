@@ -1,7 +1,6 @@
 {
   "extends": ["stylelint-config-standard"],
   "rules": {
-    "import-notation": "string",
     "at-rule-disallowed-list": [
       ["import"],
       {
@@ -19,7 +18,6 @@
         "message": "Use px, rem, em, %, vw, or vh — print units harm responsive layout."
       }
     ],
-    "color-no-invalid-hex": true,
     "no-empty-source": null,
     "max-nesting-depth": 3,
     "no-descending-specificity": null,

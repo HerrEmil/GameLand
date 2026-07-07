@@ -1,12 +1,11 @@
 carny.screens["splash-screen"] = (function () {
 	var game = carny.game,
-		dom = carny.dom,
 		firstRun = true;
 
 	function setup() {
-		dom.bind("#splash-screen", "click", function () {
+		document.querySelector("#splash-screen").addEventListener("click", function () {
 			game.showScreen("main-menu");
-		});
+		}, false);
 	}
 
 	function run() {

@@ -1,28 +1,28 @@
+window.carny = { screens: {} };
+
 carny.game = (function () {
 	// Screen scripts are loaded on first use so each game (potentially a large
-	// chunk) is only fetched when the player navigates to it. Add a screenId ->
-	// src entry here when you add a screen.
-	var sources = {
-		"splash-screen": "scripts/screen.splash.js",
-		"install-screen": "scripts/screen.splash-install.js",
-		"main-menu": "scripts/screen.main-menu.js"
-	};
+	// chunk) is only fetched when the player navigates to it. The script for
+	// screen id X lives at scripts/screen.X.js and registers carny.screens[X].
+	var loading = {};
 
 	function loadScreen(screenId) {
 		if (carny.screens[screenId]) {
 			return Promise.resolve();
 		}
-		var src = sources[screenId];
-		if (!src) {
-			return Promise.reject(new Error("Unknown screen: " + screenId));
+		if (!loading[screenId]) {
+			loading[screenId] = new Promise(function (resolve, reject) {
+				var s = document.createElement("script");
+				s.src = "scripts/screen." + screenId + ".js";
+				s.onload = resolve;
+				s.onerror = function (err) {
+					delete loading[screenId];
+					reject(err);
+				};
+				document.head.appendChild(s);
+			});
 		}
-		return new Promise(function (resolve, reject) {
-			var s = document.createElement("script");
-			s.src = src;
-			s.onload = resolve;
-			s.onerror = reject;
-			document.head.appendChild(s);
-		});
+		return loading[screenId];
 	}
 
 	function showScreen(screenId) {
@@ -53,6 +53,18 @@ carny.game = (function () {
 
 	return {
 		setup: setup,
+		loadScreen: loadScreen,
 		showScreen: showScreen
 	};
+}());
+
+// Boot. This script is deferred, so the screen elements exist by now.
+(function () {
+	var standalone = window.navigator.standalone !== false;
+	carny.game.setup();
+	carny.game.showScreen(standalone ? "splash-screen" : "install-screen");
+	if (standalone) {
+		// Warm the main-menu script while the player sits on the splash screen.
+		carny.game.loadScreen("main-menu").catch(function () {});
+	}
 }());
