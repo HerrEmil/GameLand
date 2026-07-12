@@ -7,7 +7,7 @@ carny.screens["high-scores"] = (function () {
 		NAMES = {
 			"bear-hunt": "Bear Hunt",
 			"snake": "Snake",
-			"game2": "Game 2",
+			"game2": "Block Breaker",
 			"game3": "Game 3",
 			"game4": "Game 4"
 		},

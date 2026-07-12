@@ -4,6 +4,31 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-12 — new game: Block Breaker (`game2`)
+
+Shipped the first missing menu game. `bear-hunt` had a screen script; the next
+menu button (`game2`) did not, so it 404'd — now it's a real game.
+`scripts/screen.game2.js` is a paddle-and-ball brick breaker: responsive
+full-viewport canvas, rAF loop that halts when `#game2` loses `.active`,
+pointer **and** keyboard (arrows move, Space launches/restarts) controls,
+sub-stepped ball physics (no tunnelling), WebAudio SFX, 5 rows × responsive
+columns, three lives, level-up speed ramp, and a best score persisted to
+`localStorage["gameland.hi.game2"]`. Menu button enabled + relabelled "BLOCK
+BREAKER", `<div id="game2">` added, high-scores name map + the dead-button
+regression's `IMPLEMENTED_TARGETS` updated.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** canvas renders
+(bricks/paddle/ball), a full 3-life game drives to game-over, score accrues and
+the best (50) persists to storage and shows on the High Scores screen as "Block
+Breaker", BACK returns to the menu — **zero console errors** at both viewports.
+New spec `game.game2.spec.ts` guards the load/render/input surface.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (24 assets, no stray
+`.DS_Store`) ✓ · `size-limit` JS **9.97 KB / 10 KB** brotli, CSS 622 B ✓ ·
+`lint:css` ✓ · `playwright test` → 3 passed ✓ · Lighthouse (tier `game`)
+LCP 1657 ms / CLS 0.000 / TBT 0 ms, perf 100 ✓. The game script is lazy-loaded,
+so initial-page metrics are unchanged from the bear-hunt baseline.
+
 ## 2026-07-12 — run seed base `2026071203`
 
 Playwright harness bootstrapped (`@playwright/test`, `playwright.config.ts` that
