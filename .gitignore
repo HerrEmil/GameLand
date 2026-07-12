@@ -165,3 +165,4 @@ pip-log.txt
 # Node / build artifacts
 node_modules/
 .perf-config/
+.lighthouseci/

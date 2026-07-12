@@ -4,22 +4,43 @@ carny.game = (function () {
 	// Screen scripts are loaded on first use so each game (potentially a large
 	// chunk) is only fetched when the player navigates to it. The script for
 	// screen id X lives at scripts/screen.X.js and registers carny.screens[X].
-	var loading = {};
+	// The perf build content-hashes any asset over 5 KB, so scripts larger than
+	// that are renamed to scripts/screen.X.<hash>.js in dist. asset-manifest.json
+	// maps the plain path to the hashed one; we consult it (once, cached) so a
+	// large game chunk resolves to its real filename instead of 404-ing. When no
+	// manifest is present (unbuilt dev tree, small unhashed scripts) we fall back
+	// to the plain path.
+	var loading = {},
+		manifest;
+
+	function loadManifest() {
+		if (!manifest) {
+			manifest = fetch("asset-manifest.json").then(function (r) {
+				return r.ok ? r.json() : {};
+			}).catch(function () {
+				return {};
+			});
+		}
+		return manifest;
+	}
 
 	function loadScreen(screenId) {
 		if (carny.screens[screenId]) {
 			return Promise.resolve();
 		}
 		if (!loading[screenId]) {
-			loading[screenId] = new Promise(function (resolve, reject) {
-				var s = document.createElement("script");
-				s.src = "scripts/screen." + screenId + ".js";
-				s.onload = resolve;
-				s.onerror = function (err) {
-					delete loading[screenId];
-					reject(err);
-				};
-				document.head.appendChild(s);
+			loading[screenId] = loadManifest().then(function (map) {
+				return new Promise(function (resolve, reject) {
+					var path = "scripts/screen." + screenId + ".js",
+						s = document.createElement("script");
+					s.src = map[path] || path;
+					s.onload = resolve;
+					s.onerror = function (err) {
+						delete loading[screenId];
+						reject(err);
+					};
+					document.head.appendChild(s);
+				});
 			});
 		}
 		return loading[screenId];
