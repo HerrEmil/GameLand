@@ -6,9 +6,12 @@
   "scripts": {
     "build": "node scripts-build/build.mjs",
     "lint:css": "stylelint \"styles/**/*.css\"",
-    "size": "size-limit"
+    "size": "size-limit",
+    "test": "playwright test",
+    "test:playtest": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@size-limit/file": "^11.1.6",
     "size-limit": "^11.1.6",
     "stylelint": "^17.9.1",

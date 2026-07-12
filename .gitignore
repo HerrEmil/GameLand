@@ -166,3 +166,8 @@ pip-log.txt
 node_modules/
 .perf-config/
 .lighthouseci/
+
+# Playwright playtest harness artifacts
+test-results/
+playwright-report/
+.playwright-mcp/
