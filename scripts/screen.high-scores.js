@@ -8,7 +8,7 @@ carny.screens["high-scores"] = (function () {
 			"bear-hunt": "Bear Hunt",
 			"snake": "Snake",
 			"game2": "Block Breaker",
-			"game3": "Game 3",
+			"game3": "Cave Flyer",
 			"game4": "Game 4"
 		},
 		firstRun = true,

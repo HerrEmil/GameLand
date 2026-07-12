@@ -1,4 +1,8 @@
 [
-  { "name": "JS", "path": "dist/scripts/**/*.js", "limit": "10 KB", "brotli": true },
+  { "name": "Core JS (initial boot)", "path": "dist/scripts/game.js", "limit": "1.5 KB", "brotli": true },
+  { "name": "Shell screens JS", "path": ["dist/scripts/screen.splash-screen.js", "dist/scripts/screen.install-screen.js", "dist/scripts/screen.main-menu.js", "dist/scripts/screen.high-scores.js"], "limit": "2.5 KB", "brotli": true },
+  { "name": "Game: Bear Hunt", "path": "dist/scripts/screen.bear-hunt*.js", "limit": "4.5 KB", "brotli": true },
+  { "name": "Game: Block Breaker", "path": "dist/scripts/screen.game2*.js", "limit": "4.5 KB", "brotli": true },
+  { "name": "Game: Cave Flyer", "path": "dist/scripts/screen.game3*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "CSS", "path": "dist/styles/**/*.css", "limit": "5 KB", "brotli": true }
 ]
