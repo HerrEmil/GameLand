@@ -4,6 +4,40 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-13 — new game: Snake (`snake`)
+
+Shipped the last missing menu game. `bear-hunt`, `game2`, `game3` and `game4`
+all had screen scripts; `snake` was the remaining `disabled` placeholder — now
+it's a real game and the menu is fully wired. `scripts/screen.snake.js` is the
+grid classic with a modern coat: a responsive square-cell board centred in the
+full-viewport canvas, an rAF loop that halts when `#snake` loses `.active`,
+**interpolated** slither (segments lerp between grid cells for smooth motion),
+a difficulty ramp (step time falls from 135 ms toward a 62 ms floor as the
+snake grows), keyboard (arrows/WASD, Space to replay) **and** touch (swipe to
+steer, tap to start/replay) controls, direction-queue that refuses a 180° into
+the neck, tail-aware self-collision, pulsing fruit with a particle burst on
+eat, WebAudio SFX, and a best length persisted to
+`localStorage["gameland.hi.snake"]`. The opening fruit is placed three cells
+dead ahead so the first bite needs no aiming (and the playtest scores
+deterministically). Menu button enabled + relabelled "SNAKE", the `#snake`
+placeholder div emptied, `.size-limit.json` given a `Game: Snake` budget, and
+the dead-button regression's `IMPLEMENTED_TARGETS` updated (high-scores already
+mapped `snake` → "Snake").
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** canvas renders
+(board/snake/fruit), a run drives right through the opening fruit into the wall,
+length accrues and the best persists to storage across a full reload, BACK
+returns to the menu — **zero console errors** at both viewports. New spec
+`game.snake.spec.ts` guards the load/render/input/persist surface; the
+regression spec now also drives the enabled SNAKE button.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (27 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **Snake 4.37 KB /
+4.5 KB** brotli (core 953 B, shell 1.72 KB, CSS 622 B) ✓ · `lint:css` ✓ ·
+`playwright test` → **7 passed** ✓ · Lighthouse (`lighthouserc.json`) 3 runs,
+all assertions passed — LCP/CLS/TBT within 2500 ms / 0.1 / 400 ms ✓. The game
+script is lazy-loaded, so initial-page metrics are unchanged from the baseline.
+
 ## 2026-07-12 — new game: Block Breaker (`game2`)
 
 Shipped the first missing menu game. `bear-hunt` had a screen script; the next
