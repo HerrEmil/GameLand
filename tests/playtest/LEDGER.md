@@ -4,6 +4,44 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-13 — new game: Road Cross (`road-cross`)
+
+All five original menu games now ship a screen script, so this run **adds a
+sixth**: a new `<li>` button (`name="road-cross"`, label "ROAD CROSS"), a
+`#road-cross` screen div, and `scripts/screen.road-cross.js` — a Frogger-style
+lane-crossing game and the shell's first game built on **discrete grid hops**
+(no continuous physics), so it sits clearly apart from the paddle/thrust/stack/
+slither games. The frog hops up through lanes of moving traffic to the far bank:
+each new furthest row banks a point, a full crossing awards the row bonus and
+ramps the traffic speed, and a car touch costs one of three lives (brief
+invulnerability + blink on respawn). Geometry is resolution-independent — lanes
+are described in **cell units** and projected through the current cell size each
+frame, so a resize just rescales and the accumulating per-lane offset survives
+it. An rAF loop that halts when `#road-cross` loses `.active`, keyboard
+(arrows/WASD to hop, Space/Enter to start·restart) **and** touch (swipe to steer,
+tap to hop up) controls, WebAudio SFX (hop/cross/hit/over), a BACK button to the
+menu, and a furthest-progress best persisted to
+`localStorage["gameland.hi.road-cross"]`. Every lane is phased at reset so a gap
+sits dead-centre on the frog column — the opening hop always lands safe (mirrors
+Snake's free first fruit) and gives the playtest a deterministic first point.
+High-scores name map, `.size-limit.json` (`Game: Road Cross` budget) and the
+dead-button regression's `IMPLEMENTED_TARGETS` all updated.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** canvas renders
+(banks/medians/dashed lanes/cars/frog), a run hops forward, score accrues and the
+best persists to storage across a full reload, BACK returns to the menu — **zero
+console errors** at both viewports. New spec `game.road-cross.spec.ts` guards the
+load/render/input/persist surface; the regression spec now also drives the
+enabled ROAD CROSS button. A deeper manual drive confirmed lateral input,
+lives/death→respawn, game-over→restart, and the High Scores row ("Road Cross").
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (28 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **Road Cross 4.49 KB /
+4.5 KB** brotli (core 953 B, shell 1.73 KB, CSS 622 B) ✓ · `lint:css` ✓ ·
+`playwright test` → **9 passed** ✓ · Lighthouse (`lighthouserc.json`) 3 runs, all
+assertions passed — LCP/CLS/TBT within 2500 ms / 0.1 / 400 ms ✓. The game script
+is lazy-loaded, so initial-page metrics are unchanged from the baseline.
+
 ## 2026-07-13 — new game: Snake (`snake`)
 
 Shipped the last missing menu game. `bear-hunt`, `game2`, `game3` and `game4`

@@ -6,5 +6,6 @@
   { "name": "Game: Cave Flyer", "path": "dist/scripts/screen.game3*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Tower Stack", "path": "dist/scripts/screen.game4*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Snake", "path": "dist/scripts/screen.snake*.js", "limit": "4.5 KB", "brotli": true },
+  { "name": "Game: Road Cross", "path": "dist/scripts/screen.road-cross*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "CSS", "path": "dist/styles/**/*.css", "limit": "5 KB", "brotli": true }
 ]
