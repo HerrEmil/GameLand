@@ -13,7 +13,8 @@ carny.screens["high-scores"] = (function () {
 			"road-cross": "Road Cross",
 			"dash-run": "Dash Run",
 			"sky-hopper": "Sky Hopper",
-			"tile-2048": "2048"
+			"tile-2048": "2048",
+			"star-blaster": "Star Blaster"
 		},
 		firstRun = true,
 		el, list, empty;
