@@ -15,7 +15,7 @@ import { test, expect, type Page } from "@playwright/test";
 // `toBeDisabled()` fails and, once clicked, they 404) and passes after it.
 
 // Menu targets that ship an implemented screen script and must stay live.
-const IMPLEMENTED_TARGETS = ["bear-hunt", "game2", "game3", "game4", "snake", "road-cross", "high-scores"];
+const IMPLEMENTED_TARGETS = ["bear-hunt", "game2", "game3", "game4", "snake", "road-cross", "dash-run", "high-scores"];
 
 function isScreenScript(url: string): boolean {
   return /\/scripts\/screen\.[^/]+\.js(\?|$)/.test(url);
