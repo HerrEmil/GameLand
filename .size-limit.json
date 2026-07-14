@@ -9,5 +9,6 @@
   { "name": "Game: Road Cross", "path": "dist/scripts/screen.road-cross*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Dash Run", "path": "dist/scripts/screen.dash-run*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Sky Hopper", "path": "dist/scripts/screen.sky-hopper*.js", "limit": "4.5 KB", "brotli": true },
+  { "name": "Game: 2048", "path": "dist/scripts/screen.tile-2048*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "CSS", "path": "dist/styles/**/*.css", "limit": "5 KB", "brotli": true }
 ]

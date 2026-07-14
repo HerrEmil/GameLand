@@ -4,6 +4,51 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-14 — new game: 2048 (`tile-2048`)
+
+All nine menu games through Sky Hopper ship a screen script, so this run **adds a
+ninth**: a new `<li>` button (`name="tile-2048"`, label "2048"), a `#tile-2048`
+screen div, and `scripts/screen.tile-2048.js` — a **slide-and-merge number
+puzzle** and the shell's **first turn-based game** (the other eight are all
+real-time arcade), so it sits clearly apart. Swipe or arrow the 4×4 board; two
+tiles of equal value that collide fuse into their sum and bank that sum as score.
+After any move that changed the board a new tile spawns (a 2, or a 4 one time in
+ten). The board seeds two 2-tiles side by side, so the opening horizontal swipe
+always merges — the deterministic early score the playtest hangs on (mirrors the
+other games' free first point, and 2048's own two-tile opening). Reaching 2048
+rings a chime and flashes gold but play continues; the run ends only when the
+board is full with no adjacent equals left (`isOver()` scans for an empty cell or
+any orthogonal equal pair). Slide tweening (smoothstep over 0.11 s), merge-bump
+and spawn grow-in pops, viewport-relative geometry (board = min(W−2m, H−top−m),
+recomputed each frame so a resize just rescales), an rAF loop that halts when
+`#tile-2048` loses `.active`, a BACK button to the menu, keyboard
+(arrows/WASD, Space·Enter to restart) **and** touch (swipe to move, tap to
+restart) controls, WebAudio SFX (slide / value-pitched merge / win / game-over),
+and a best persisted to `localStorage["gameland.hi.tile-2048"]` (saved the instant
+a new best is set). High-scores name map, `.size-limit.json` (`Game: 2048` budget)
+and the dead-button regression's `IMPLEMENTED_TARGETS` all updated.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** canvas renders
+(cream page, tan board, empty cells, value-coloured tiles, HUD pills, hint), the
+opening ArrowLeft merges and banks a score, higher tiles build through varied
+merges (verified to 8 / 16 / 32 and beyond), the best persists across BACK and a
+full reload, and a 73-move random drive reached a natural **game over** — the
+overlay ("Game Over" / "Score N" / "Tap / Space for a new game") rendered over the
+tinted full board and the next key **restarted** into a fresh run with the best
+(1112) preserved. The High Scores screen lists "2048" ranked #1. **Zero console
+errors** at both viewports (the lone `willReadFrequently` warning came from the
+harness's own canvas readback probe, not the game — the game never calls
+`getImageData`). New spec `game.tile-2048.spec.ts` guards the
+load/render/merge/persist surface at both viewports; the regression spec now also
+drives the enabled 2048 button.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (31 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **2048 4.37 KB /
+4.5 KB** brotli (core 953 B, shell 1.76 KB, CSS 622 B) ✓ · `lint:css` ✓ · full
+playtest suite **15 passed** ✓ · `@lhci/cli autorun` LCP/CLS/TBT assertions all
+pass (game script is lazy-loaded, so initial-page metrics are unchanged from the
+baseline) ✓.
+
 ## 2026-07-14 — new game: Sky Hopper (`sky-hopper`)
 
 Every menu game through Dash Run ships a screen script, so this run **adds an
