@@ -4,6 +4,50 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-14 — new game: Sky Hopper (`sky-hopper`)
+
+Every menu game through Dash Run ships a screen script, so this run **adds an
+eighth**: a new `<li>` button (`name="sky-hopper"`, label "SKY HOPPER"), a
+`#sky-hopper` screen div, and `scripts/screen.sky-hopper.js` — a doodle-jump-style
+**vertical climber**, the shell's first physics-driven platformer. The hopper
+auto-bounces off one-way platforms under gravity; the player only STEERS left/right
+(arrows / A·D or a held-drag pointer that eases toward the touch x, with screen
+wrap). Height climbed is the score. A centred starter ladder guarantees a hands-off
+climb from the opening bounce — the deterministic early score the playtest hangs on
+(the first launch uses the *spring* velocity so the very first bounce clears the
+camera line and the score ticks immediately). Above the ladder, platforms narrow
+and space out and turn to **moving / one-shot crumbling / spring** variants as the
+sky gradient darkens toward space — the difficulty curve. Physics are viewport-
+relative (apex 0.29H clears every gap 0.16–0.235H with margin) and the landing test
+is a swept, crossing-based check (`prevFeet ≤ platTop ≤ feet`) so no fall speed can
+tunnel a platform. An rAF loop that halts when `#sky-hopper` loses `.active`, a BACK
+button to the menu, WebAudio SFX (hop / spring / break / milestone / death), and a
+best persisted to `localStorage["gameland.hi.sky-hopper"]`. High-scores name map,
+`.size-limit.json` (`Game: Sky Hopper` budget) and the dead-button regression's
+`IMPLEMENTED_TARGETS` all updated.
+
+**Bug caught & fixed pre-commit:** the peak-follow camera shifted every platform's
+`y` by the scroll delta but left `s.top` (the generation cursor) stale, so once the
+starter ladder scrolled away `gen()` would stop spawning and the climb would dead-end
+near the ladder cap (~score 190). Fixed by advancing `s.top` with the same delta.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** canvas renders
+(platforms / hopper / darkening sky), the run climbs, score accrues and the best
+persists across a full reload, BACK returns to the menu — **zero console errors** at
+both viewports. New spec `game.sky-hopper.spec.ts` guards the load/render/steer/
+persist surface; the regression spec now also drives the enabled SKY HOPPER button.
+A deeper vision-driven auto-play (detect hopper + platforms from canvas pixels, steer
+toward the nearest platform) climbed to **403 — well past the ~190 ladder cap** —
+empirically confirming endless generation past the ladder (the fix above) and the
+moving-platform regime; death→restart and the High Scores row ("Sky Hopper", ranked
+#1 at 403) both verified.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (30 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **Sky Hopper 4.45 KB /
+4.5 KB** brotli (55 B headroom; core 953 B, shell 1.76 KB, CSS 622 B) ✓ · `lint:css`
+✓ · full playtest suite **13 passed** ✓ · `lhci autorun` LCP/CLS/TBT assertions all
+pass ✓.
+
 ## 2026-07-13 — new game: Road Cross (`road-cross`)
 
 All five original menu games now ship a screen script, so this run **adds a
