@@ -4,6 +4,57 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-14 — new game: Tetra (`tetra`)
+
+All ten menu games through Star Blaster ship a screen script, so this run **adds
+an eleventh**: a new `<li>` button (`name="tetra"`, label "TETRA"), a `#tetra`
+screen div, and `scripts/screen.tetra.js` — a **falling-block puzzle** and the
+shell's first *rotate-and-nest stacker*. 2048 slides and merges a fixed grid and
+Tower Stack times a single drop, but nothing else rotates tetrominoes into a
+well, so it sits clearly apart. The seven pieces are stored as one spawn shape
+each and their four rotations are derived at load by rotating the cells CW inside
+their bounding box `(r,c)->(c,N-1-r)`; a 7-bag keeps the stream fair. Gravity
+lowers the active piece one row per tick (`0.8·0.85^level`, floored at 0.05 s);
+filling a row clears it and banks `[100,300,500,800][n]·(level+1)`, soft drop +1,
+hard drop +2 per cell, and level (hence speed) steps every ten lines. The piece
+auto-spawns on `run()` so a single Space **hard-drops** the opening piece and
+banks the drop distance at once — the deterministic first score the playtest
+hangs on — and that first gain is written to `localStorage["gameland.hi.tetra"]`
+immediately (later writes throttle to every 100). A translucent **ghost** marks
+the landing column, a `NEXT` preview shows the upcoming piece (beside the well on
+desktop, centred in the top strip on a phone where there is no room beside it),
+and a full row clear flashes the board white. Bevelled blocks, per-frame
+viewport-relative geometry (cell = `min(0.9W/10, 0.84H/20)`, recomputed each
+frame so a resize just rescales the well — no stored per-viewport row state to go
+stale), an rAF loop that halts when `#tetra` loses `.active`, a BACK button to
+the menu, keyboard (←/→·A·D move, ↑·W·X rotate CW, Z rotate CCW, ↓ soft-drop,
+Space·Enter hard-drop / restart) **and** touch (drag to slide columns, tap to
+rotate, swipe down to slam, tap to restart) controls, WebAudio SFX
+(move / rotate / lock / drop / value-pitched line-clear / level-up / game-over),
+and simple wall-kick on rotate (try x-offsets 0,∓1,∓2). High-scores name map,
+`.size-limit.json` (`Game: Tetra` budget) and the dead-button regression's
+`IMPLEMENTED_TARGETS` all updated.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** the canvas fills
+the viewport, the well renders (dark gradient page, grid lines, bevelled 7-bag
+pieces in distinct colours) with the active piece and its ghost drawn above the
+stack, a single Space hard-drop banks and persists a score, and the move/rotate
+keyboard paths run clean. An idle board naturally stacked into the centre columns
+and **topped out** — the "GAME OVER / ★ NEW BEST N / tap · space to replay"
+overlay rendered and the next key **restarted** into a fresh run with the best
+preserved. Best survives BACK (which halts the loop) and a full reload. **Zero
+console errors** at both viewports (the lone warning is the shell's own
+`roboto-regular` font-preload notice, not the game). New spec
+`game.tetra.spec.ts` guards the load/render/hard-drop/persist surface at both
+viewports; the regression spec now also drives the enabled TETRA button.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (33 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **Tetra 4.46 KB /
+4.5 KB** brotli (core 953 B, shell 1.8 KB, CSS 622 B) ✓ · `lint:css` ✓ · full
+playtest suite **19 passed** ✓ · `@lhci/cli autorun` LCP/CLS/TBT assertions all
+pass (the game script is lazy-loaded, so initial-page metrics are unchanged from
+the baseline) ✓.
+
 ## 2026-07-14 — new game: 2048 (`tile-2048`)
 
 All nine menu games through Sky Hopper ship a screen script, so this run **adds a
