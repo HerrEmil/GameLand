@@ -13,5 +13,6 @@
   { "name": "Game: Star Blaster", "path": "dist/scripts/screen.star-blaster*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Tetra", "path": "dist/scripts/screen.tetra*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "Game: Missile Command", "path": "dist/scripts/screen.missile-command*.js", "limit": "4.5 KB", "brotli": true },
+  { "name": "Game: Astro Drift", "path": "dist/scripts/screen.astro-drift*.js", "limit": "4.5 KB", "brotli": true },
   { "name": "CSS", "path": "dist/styles/**/*.css", "limit": "5 KB", "brotli": true }
 ]
