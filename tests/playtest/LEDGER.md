@@ -4,6 +4,64 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-15 — fix: Road Cross taller-resize freeze (run seed `2026071530`)
+
+Fan-out recon this run played all five games headless with fresh disjoint seeds
+(2014-7DFPS `2026071510`, GGJ2015 `2026071520`, GameLand `2026071530`,
+LegendaryJourney `2026071540`, Sandpiper `2026071550`). GameLand was picked to
+fix: it carried the only hard **crash** among the five (the others surfaced only
+latent/semantics-changing items — an uncaught `requestPointerLock()` rejection in
+2014-7DFPS, the long-deferred GGJ2015 bubble-leak/layer-desync, all clean on
+Sandpiper/LJ).
+
+**Defect (confirmed, MEDIUM — game freeze).** Road Cross froze on a **taller
+mid-run resize**. `size()` (the window `resize` handler) called `metrics()`, which
+recomputes the row count `R` from the new viewport height, but never rebuilt
+`s.rows` — that array was sized to the run's *original* `R` in `reset()`/`buildRows()`.
+Growing the viewport bumped `R` up while `s.rows` stayed short, so the next frame's
+`update()` lane loop (`screen.road-cross.js:167`) and `render()` row loop (`:202`)
+indexed `s.rows[r]` past the array end → `TypeError: Cannot read properties of
+undefined (reading 'road')`. The throw escaped the rAF callback `frame`, so
+`requestAnimationFrame` was never re-scheduled → the loop died and the game froze.
+Only a *taller* resize (one that increases `R`) crashed; a shorter one left
+`s.rows` longer than `R`, so indices stayed in-bounds.
+
+**Fix (minimal, one line).** The header note already promises "Lanes are in CELL
+units … so resize just rescales" — so the grid dimensions (`C`/`R`) should be fixed
+for the run and a resize should only rescale the cell size. `reset()` still calls
+`metrics()` to fix the run's grid; `size()` now recomputes **only** `cw`/`ch`
+(`cw = W / C; ch = H / R;`) instead of re-running `metrics()`. `s.rows` can no
+longer fall out of sync with `R`. Kept size-neutral (Road Cross was at 4.49 KB of
+its 4.5 KB brotli budget) by trimming header prose; final 4.47 KB.
+
+**Regression test:** `regression-roadcross-resize.spec.ts` — opens Road Cross at a
+short viewport (R=9), starts the run, resizes **taller** (R→cap 15), and asserts no
+`pageerror` and that the rAF loop is still live (a mid-canvas traffic band keeps
+changing). Proven **FAIL pre-fix** (`TypeError … reading 'road'` at
+`screen.road-cross.js:169`) and **PASS post-fix**, plus a shorter-resize control
+that stays clean.
+
+**Also restored main to green:** the `astro-drift` game (shipped in `c2b1305`)
+was missing from `regression-dead-menu-buttons.spec.ts`'s `IMPLEMENTED_TARGETS`,
+so that spec wrongly expected its (correctly enabled, working) menu button to be
+disabled → the suite was red on `main` before this run. Added `"astro-drift"` to
+the allowlist; the spec now actively drives its screen (navigate → no 404 → no
+console error).
+
+**Gate:** `npm run build` ✓ · `npx playwright test` → **23 passed** · `npm run
+size` all budgets green (Road Cross 4.47 KB) · `npm run lint:css` clean · LHCI
+`autorun` all assertions pass (LCP/CLS/TBT within 2500 ms / 0.1 / 400 ms on
+`index.html`). No html-validate config in this repo (HTML untouched).
+
+**Known follow-ups (not this run):**
+- The prior mobile-overflow follow-up (`#game` fixed `width:1024px`, viewport meta
+  omits `width=device-width`) still stands.
+- 2014-7DFPS: route `document.body.requestPointerLock()`'s rejected promise into
+  the existing `pointerlockerror` recovery (uncaught rejection under Chrome's
+  re-lock cooldown) — a real fix for a 2014-7DFPS run.
+- GGJ2015: the deferred bubble DOM-leak / locked-bubble stacking and the
+  `currentLayer` singleton desync both reproduced again this run and remain open.
+
 ## 2026-07-15 — new game: Missile Command (`missile-command`)
 
 All eleven menu games through Tetra ship a screen script, so this run **adds a

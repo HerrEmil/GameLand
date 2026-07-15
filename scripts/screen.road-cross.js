@@ -5,9 +5,8 @@ carny.screens["road-cross"] = (function () {
 	// touch costs one of three lives. Discrete grid hops (no physics). Lanes are
 	// in CELL units, projected through the current cell size each frame so resize
 	// just rescales. At reset every lane is phased with a gap dead-centre on the
-	// frog column, so the opening hop always lands safe (like Snake's free first
-	// fruit) — a deterministic first point for the playtest. Same lazy-load +
-	// firstRun convention; over 5 KB so the build content-hashes it.
+	// frog column, so the opening hop always lands safe. Lazy-load + firstRun;
+	// content-hashed.
 	var game = carny.game,
 		HI = "gameland.hi.road-cross",
 		TAU = 6.2831853,
@@ -288,7 +287,8 @@ carny.screens["road-cross"] = (function () {
 	function size() {
 		W = window.innerWidth || 1024; H = window.innerHeight || 748;
 		if (cv) { cv.width = W; cv.height = H; }
-		if (s) { metrics(); if (!(s.hop > 0)) { s.fx = colX(s.col); s.fy = rowY(s.row); } }
+		// Rescale cells only; metrics() here would bump R without rebuilding s.rows (crash).
+		if (s) { cw = W / C; ch = H / R; if (!(s.hop > 0)) { s.fx = colX(s.col); s.fy = rowY(s.row); } }
 	}
 	function setup() {
 		el = document.getElementById("road-cross");
