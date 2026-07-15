@@ -15,7 +15,8 @@ carny.screens["high-scores"] = (function () {
 			"sky-hopper": "Sky Hopper",
 			"tile-2048": "2048",
 			"star-blaster": "Star Blaster",
-			"tetra": "Tetra"
+			"tetra": "Tetra",
+			"missile-command": "Missile Command"
 		},
 		firstRun = true,
 		el, list, empty;

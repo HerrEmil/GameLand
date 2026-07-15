@@ -4,6 +4,57 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-15 — new game: Missile Command (`missile-command`)
+
+All eleven menu games through Tetra ship a screen script, so this run **adds a
+twelfth**: a new `<li>` button (`name="missile-command"`, label "MISSILE
+COMMAND"), a `#missile-command` screen div, and `scripts/screen.missile-command.js`
+— a **point-defence** game and the shell's first *tap-to-target* mechanic. Star
+Blaster is a shooter you *steer*; Road Cross / Dash Run dodge lanes; nothing else
+lets you **aim a detonation at an arbitrary point**, so it sits clearly apart.
+Warheads rain from the top toward six cities along the ground; you TAP (or steer a
+crosshair with arrows/WASD and fire with Space) to lob an interceptor from the
+central base that flies to the point and **detonates**, and the expanding blast
+destroys every warhead inside it — direct kills score `25` and each kill spawns a
+small **chain blast**, so a well-placed shot cascades through a cluster. A wave
+grants a fresh clip of `20` interceptors (running dry is the real risk), warheads
+speed up and grow denser each wave (`0.075 + 0.011·wave` normalised/s, `7 + 2·wave`
+of them) and from **wave 4** a warhead can **split mid-air** into 1–2 MIRVs;
+clearing a wave banks `100·cities + 5·ammo` and losing the last city ends the run.
+A key robustness choice: **all positions are stored normalised (0..1) and scaled
+by the live viewport every frame**, so a resize just re-projects rather than
+corrupting baked coordinates (the Road Cross resize-bug class can't occur here).
+Blasts grow/hold/shrink over `0.82 s` and collide in pixel space against a circle
+matching the drawn radius; a new best is written to
+`localStorage["gameland.hi.missile-command"]` immediately on the first kill.
+Night-sky gradient with stars, cyan skylines that crumble to rubble when hit, red
+warhead trails with peach heads, cyan interceptor trails, additive (`lighter`)
+radial-gradient explosions, a screen-shake on city loss, HUD (score / best / wave
+/ ammo / cities), a start prompt and a "GAME OVER / ★ NEW BEST / tap · space to
+replay" overlay. High-scores name map, `.size-limit.json` (`Game: Missile Command`
+budget) and the dead-button regression's `IMPLEMENTED_TARGETS` all updated. A
+review pass also caught and fixed a real defect: the wave-clear bonus/advance was
+guarded only at the top of `update`, so the **death frame** (last missile destroys
+the last city, emptying the wave) could still award the ammo bonus, refill ammo and
+play the wave jingle after game-over — now gated on `!s.over`.
+
+**Playtest (Playwright, mobile 375×812 + desktop 1280×800):** the canvas fills the
+viewport and renders a non-blank frame; the test aims like a human — it reads the
+canvas, finds the warm-coloured warhead (red trail / peach head) and taps it, with
+taps **paced slower than a blast's 0.82 s life** so no stale blast pollutes the
+scan, firing only when a warhead is seen. A single well-aimed interceptor banks and
+persists a score at both viewports (1–2 shots per run in practice); the keyboard
+aim+fire path runs clean. Best survives BACK (which halts the rAF loop) and a full
+reload. **Zero console errors** at both viewports. New spec
+`game.missile-command.spec.ts` guards the load/render/intercept/persist surface;
+the regression spec now also drives the enabled MISSILE COMMAND button.
+
+**Gate:** `npm run build` ✓ · `asset-guard dist` PASS (34 assets, no stray
+`.DS_Store`) ✓ · `size-limit` per-game budgets all green — **Missile Command
+4.47 KB / 4.5 KB** brotli ✓ · `lint:css` ✓ · full playtest suite **21 passed** ✓ ·
+`@lhci/cli autorun` LCP/CLS/TBT assertions all pass (the game script is
+lazy-loaded, so initial-page metrics are unchanged from the baseline) ✓.
+
 ## 2026-07-14 — new game: Tetra (`tetra`)
 
 All ten menu games through Star Blaster ship a screen script, so this run **adds
