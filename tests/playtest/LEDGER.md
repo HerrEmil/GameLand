@@ -4,6 +4,174 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-17 — recon only, no fix (run seeds `77030100`–`77033000`)
+
+Fan-out recon across the five games. GameLand was **not** this run's fix target —
+the selection rule picks fewest-specs + oldest-ledger-entry and GameLand is the
+**best-covered** repo at 12 specs, so Sandpiper took the fix. This entry exists so
+the findings below survive the run. Seeds used: `77030100` (mobile 375×812 all-game
+fuzz base, per-game seed = base + gameIndex×7), `77030200` (desktop 1280×800 fuzz
+base, same derivation), `77031000` / `77032000` / `77033000` (bear-hunt / game3 /
+astro-drift deep play). Range `77030000..77039999`, never used before.
+
+### LEADING CANDIDATE for the next GameLand fix run — keyboard trap (MEDIUM, WCAG 2.1.2 Level A)
+
+**The `← BACK` button cannot be activated from the keyboard in 10 of the 13 games.**
+Confirmed headlessly, not inferred from reading.
+
+**Root cause.** Every game registers a *document-level* `keydown` listener that calls
+`e.preventDefault()` on its game keys **without checking whether the event target is an
+interactive control**. When the screen's own `← BACK` button has focus, the browser's
+default action for Enter/Space on a focused `<button>` is to synthesise a click —
+`preventDefault()` cancels it. Space and/or Enter are game keys in every game, so BACK
+silently does nothing.
+
+Fully trapped (both Enter **and** Space swallowed) — 10 games:
+
+| game | file:line |
+| --- | --- |
+| Tower Stack | `screen.game4.js:210,213` — `isDropKey` explicitly lists `"Enter"` |
+| Snake | `screen.snake.js:245,249` |
+| Road Cross | `screen.road-cross.js:270,272` |
+| Dash Run | `screen.dash-run.js:289,293` |
+| Sky Hopper | `screen.sky-hopper.js:113,114,117` |
+| 2048 | `screen.tile-2048.js:146,151` |
+| Star Blaster | `screen.star-blaster.js:117,120` |
+| Tetra | `screen.tetra.js:182,185-187` |
+| Missile Command | `screen.missile-command.js:108,112` |
+| Astro Drift | `screen.astro-drift.js:300-302` |
+
+Escapable via Enter (Space dead only) — these three simply never handle Enter, which is
+the whole reason they survive: `screen.bear-hunt.js:230`, `screen.game2.js:220,222`,
+`screen.game3.js:215,218`.
+
+**Why it is a TRUE trap, not just a dead key.** `styles/main.css:34-45` makes inactive
+`.screen`s `display:none`, so they are unfocusable — on a game screen the *entire* focus
+ring is that game's own (dead) buttons. Observed focus-ring dumps:
+
+```
+game4        TRAPPED — focus ring: button[← BACK] in #game4 | body
+astro-drift  TRAPPED — focus ring: button[← BACK] | ◄ | ► | ● | ▲ | body
+```
+
+None of them activate. Escape requires a **mouse or a page reload**.
+
+**Repro.** Build, serve `dist/` on :5052, open it, click the splash. Focus the `TETRA`
+menu button → Enter (Tetra opens). Tab → focus lands on `← BACK`. Enter → nothing.
+Space → nothing (it hard-drops the piece instead). Tab → `body`. No other control exists.
+
+**Evidence method — this is what makes the finding trustworthy.** Instrumenting
+`defaultPrevented` *after* the games' handlers ran gave a **perfect correlation**: `true`
+in exactly the 23 DEAD cases, `false` in the 3 OK cases — pinning the mechanism rather
+than just the symptom. Crucially the probe also ran **positive controls** on `#main-menu`
+and `#high-scores` (no game keydown handler), where Enter and Space activate buttons
+normally — proving the probe detects *working* activation instead of always reporting
+failure.
+
+**Two gotchas for whoever fixes this — the important part.**
+- **(a) Size budgets.** Each fix is a one-line early-return when the target is a control
+  (e.g. `if (e.target.closest("button")) { return; }`); no behaviour change during normal
+  play, since the canvas is not focusable and `e.target` is `body`. But four games sit
+  within ~0.05 KB of the 4.5 KB brotli cap (**Road Cross 4.47, Missile Command 4.47,
+  Tetra 4.46, Sky Hopper 4.45**), so **13 inline copies of a ~45-char guard may bust a
+  budget**. A shared helper in `game.js` (core/shell budget, counted once) is likely
+  cheaper than 13 copies. Re-check `npm run size`.
+- **(b) No central shortcut.** A central *capture-phase* listener **cannot
+  "un-preventDefault"**. A genuinely shell-owned fix means the shell owns key dispatch —
+  a bigger refactor than this defect warrants. Don't start down that road by accident.
+
+**Regression test design (proven pre-fix result).** For each game: enter via keyboard,
+Tab the focus ring, press Enter and Space at each stop, assert `#main-menu` regains
+`.active`. **Fails today for the 10 trapped games, passes for the 3 Enter-escapable
+ones.** Tighter form: focus `#<game> button` (BACK), press Enter, assert `#main-menu` is
+active — fails today for 10 games.
+
+### Still-open LOW — every *loaded* game rebuilds its canvas on every resize
+
+Each `setup()` does `window.addEventListener("resize", size)` and never removes it
+(`screen.astro-drift.js:368`, `screen.bear-hunt.js:258`, `screen.game3.js:246`, …), and
+`size()` unconditionally does `cv.width = W; cv.height = H;`
+(`screen.astro-drift.js:334-337`, `screen.bear-hunt.js:235-238`,
+`screen.game3.js:222-226`) — reallocating and clearing a full-viewport backing store with
+no `active()` guard. Measured by hooking the `HTMLCanvasElement.prototype.width` setter,
+sitting on the **menu** with no game on screen: 0 games visited → **0** reallocations per
+resize event; 1 game → **1**; all 13 → **13** (60 events → 780 reallocations). At
+1280×800 that is ~53 MB of backing-store churn per resize event, and resize fires
+continuously while dragging a window edge.
+
+**Honest caveat — do not let this read stronger than it is.** The JS cost is
+**negligible**: 60 synthetic resize events cost 1.4 ms total (**0.023 ms/event**). No
+jank, no dropped frames and no memory growth were observed. This is a **latent
+inefficiency confirmed by instrumentation, NOT an observed user-facing failure.**
+
+**Real gotcha if anyone fixes it.** The guard must go on the **listener**, not inside
+`size()`: `game.js:56-57` calls `run()` **before** `classList.add("active")`, so
+`begin()` → `size()` runs while `active()` is still **false**. A naive
+`if (!active()) { return; }` inside `size()` would skip the initial sizing and leave a
+300×150 canvas. Correct shape:
+
+```js
+window.addEventListener("resize", function () { if (active()) { size(); } });
+```
+
+Regression test: hook the canvas `width` setter, visit all 13 games, return to the menu,
+dispatch one resize, assert ≤1 reallocation. Fails today (13), passes after.
+
+### Coverage gap — three games have no dedicated spec
+
+**`bear-hunt`, `game3` (Cave Flyer) and `astro-drift` ship no `game.*.spec.ts`.** All 13
+are navigate-only smoke-driven via `regression-dead-menu-buttons.spec.ts`
+`IMPLEMENTED_TARGETS:18`, but those three have no dedicated playtest spec. This run
+biased its budget onto them and **all three came back functionally clean** at both
+viewports (zero console/page errors): bear-hunt played a full 45 s round → TIME! →
+restart → loop alive, best persisted (mobile 1703, desktop 1268) and survived reload;
+game3's bang-bang hover threaded the opening gap → crash → restart → loop alive, best
+persisted (mobile 3, desktop 5) and survived reload; astro-drift lost all 3 lives →
+GAME OVER / ★ NEW BEST overlay, best persisted (mobile 240, desktop 260) and survived
+reload. So they are **exercised but still unguarded** — a future run can write their
+specs against known-good behaviour.
+
+### Clean / verified this run
+
+Baseline `npx playwright test` on `main` → **23 passed** (findings are attributable to the
+code, not a red baseline). All 13 games: enter + BACK at 375×812 and 1280×800 with a
+90-step seeded keyboard+pointer fuzz each → zero console errors, zero pageerrors, zero
+404s, render loop alive after fuzz. **NaN/Infinity probe:** hooked 22
+`CanvasRenderingContext2D` methods to trap any non-finite numeric argument across fuzz +
+resize + deep play at both viewports — **zero** non-finite values reached any draw call
+(corrupt score/position/velocity flows into a draw arg, so this covers state broadly).
+**Mid-run resize sweep**, all 13 games (900×500 → 900×900 taller → 900×380 shorter →
+375×812 → 1280×800): no pageerror, no NaN, loop alive (≥1 draw/500 ms) everywhere — the
+**Road Cross taller-resize freeze class did NOT reappear anywhere**. **Spam re-entry:**
+12× back-to-back `showScreen(g)` + 6× menu↔game round-trips per game → exactly 1 canvas
+per screen, rAF tick ratio ≥0.85 vs. menu baseline for all 13, and **zero draw calls
+after leaving a screen** (no leaked or dual rAF loops). High-scores name map
+(`screen.high-scores.js:7-21`) covers all 13 games — nothing falls back to the
+auto-titleiser. **CLS** on boot + menu→high-scores→back = **0.000**.
+
+### Flakes chased down and reclassified — do NOT re-report these as defects
+
+- **astro-drift "stall" at 375×812** (score froze at 160 / SHIPS 1 for 30 s): **not a
+  defect.** Rock speed scales with `U = min(W, H)` (`screen.astro-drift.js:335`), so on a
+  phone viewport rocks legitimately drift ~2× slower than desktop and sitting still
+  survives for a long time. Flying actively reached game-over and persisted (240).
+- **"canvas not repainting after resize" in 9 games:** probe artifact — the paint check
+  sampled a *static* top-left region. Replaced with a draw-call counter → all 13 clean.
+- **astro-drift BACK "not actionable" during fuzz:** probe artifact — astro-drift is the
+  **only** game with BACK at **top**-left (`screen.astro-drift.js:352`) rather than
+  bottom-left, so random fuzz clicks hit it and navigated away.
+- The prior run's one-off **game4 BACK actionability blip did NOT reproduce** — game4's
+  BACK clicked cleanly on every pass.
+
+**Known-deferred:** the mobile horizontal overflow (`#game` fixed `width:1024px`, viewport
+meta at `index.html:5` omits `width=device-width`) and the `install-screen` terminal state
+were both re-confirmed this run — **not worse than logged**, still deferred.
+
+**Gate:** recon only — **no source file was touched**, no spec added, no commit. `npm run
+build` ✓ · baseline `npx playwright test` → **23 passed** ✓ · probe specs written under
+`tests/playtest/tmp-*.spec.ts` were **deleted**; tree left clean apart from this ledger
+entry, with no `dist/` or `.lighthouseci/` churn.
+
 ## 2026-07-15 — fix: Road Cross taller-resize freeze (run seed `2026071530`)
 
 Fan-out recon this run played all five games headless with fresh disjoint seeds
