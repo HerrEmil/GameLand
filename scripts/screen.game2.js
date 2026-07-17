@@ -64,7 +64,13 @@ carny.screens["game2"] = (function () {
 
 	function launchSpeed() { return Math.min(H * 1.05, H * 0.6 + (s.level - 1) * H * 0.05); }
 
-	function stick() { s.launched = false; s.vx = 0; s.vy = 0; }
+	// Seed the ball on the paddle. Called by reset()/nextLevel()/loseLife() after
+	// layout() has set px/py/r, so the ball has finite coords the moment the board
+	// resets — a launch() that lands before the first update() frame (double-tap
+	// "play again", or tapping as the screen re-opens) can no longer read undefined
+	// bx/by and NaN-poison the whole board. update() keeps bx tracking px while the
+	// ball is still stuck.
+	function stick() { s.launched = false; s.vx = 0; s.vy = 0; s.bx = s.px; s.by = s.py - s.r - 1; }
 
 	function reset() {
 		s = {

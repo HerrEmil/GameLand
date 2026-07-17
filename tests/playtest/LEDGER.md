@@ -4,6 +4,71 @@ Cross-game self-play bug-hunt. Each run seeds fresh input ranges, plays the
 screen state-machine headless, mines for real defects, and fixes the root cause
 with a regression test.
 
+## 2026-07-17 — FIX: game2 uninitialized-ball NaN phantom-clear (run seeds `177201`–`177274`)
+
+Five-game playtest sweep (one subagent per game, deep multi-seed fuzz at mobile
+375×812 + desktop 1280×800). Selection rule — fewest regression specs + oldest
+ledger entry among games with a confirmed defect — picked **GameLand** this run:
+tied-fewest regression specs (2) and the oldest last real code-fix (2026-07-15),
+and it carried the standing HIGH-severity game2 defect flagged in the recon entry
+below.
+
+### FIXED (HIGH) — game2 (Block Breaker): uninitialized ball goes NaN, silently phantom-clears the level, banks a corrupt best
+
+**Root cause.** `s.bx`/`s.by` were only ever assigned in `update()`'s not-launched
+branch (`scripts/screen.game2.js:144`). `reset()` (`:69`) and `stick()` (`:67`)
+never seeded them, so between a board reset and the first `update()` frame the ball
+coords are `undefined`. If `launch()` lands in that window — double-tapping the
+"play again" prompt on the game-over screen, or tapping the instant the screen
+re-opens — `update()` takes the `moveBall()` branch and does `s.bx += s.vx*dt` on
+`undefined` → **NaN forever**. A NaN ball then satisfies `brickHit()`'s inverted
+reject guard (`NaN > r*r` is `false`, `:113`), so it kills exactly one brick per
+frame, drains `s.alive` to 0 with no paddle contact, fires `nextLevel()` (`:119`),
+and banks the unearned points to `gameland.hi.game2` at the next real game over
+(`:92`). Reproduced this run both deterministically (69 consecutive `arc(NaN,NaN)`
+draws = board size) and organically under plain spam-click fuzz (60 NaN draws,
+sub-seed `177202`) — **zero console errors either way**, a fully silent corruption.
+
+**Fix.** Seed the ball inside `stick()` — the chokepoint called by `reset()`,
+`nextLevel()`, and `loseLife()`, always after `layout()` has set `px`/`py`/`r`:
+`s.bx = s.px; s.by = s.py - s.r - 1;` (the same rest position `update():144` uses).
+The ball now has finite coords the moment the board resets, so an early `launch()`
+can no longer read `undefined`. `update():144` still tracks `bx` to the paddle
+while the ball is stuck, so pre-launch behavior is unchanged. One line, +0.19 KB
+brotli (Block Breaker 3.46 → 3.65 KB, budget 4.5 KB). Scanned the sibling games:
+game3/game4/dash-run/star-blaster all fully init kinematics in `reset()`; game2 was
+the sole holdout.
+
+**Regression test.** `regression-game2-uninitialized-ball.spec.ts` (mobile +
+desktop). Gates `requestAnimationFrame` so the launching `pointerdown` lands
+strictly before the first post-reset frame (the only window the bug needs), and a
+`CanvasRenderingContext2D.arc` sentinel flags any non-finite ball draw. Proven
+**RED pre-fix** (`anyNonFinite: true`, both viewports) → **GREEN post-fix**; also
+asserts the ball still renders, in bounds, and actually moves after launch.
+
+### Gate (all green)
+
+`npm run build` clean · `npx playwright test` **25/25** · `npm run size` all
+budgets green · Lighthouse (3 runs, dist): **LCP 1656ms** (≤2500) · **CLS 0.0000**
+(≤0.1) · **TBT 0ms** (≤400); perf 1.00 / a11y 0.83 / bp 0.89 / seo 1.00.
+
+### Cross-game sweep (this run's findings in the OTHER four repos — not fixed here)
+
+Recorded so they aren't lost; each is filed/observed in its own repo's ledger:
+- **2014-7DFPS** — NEW MAJOR: paused Space keydowns pump `velocity.y` unbounded
+  (auto-repeat re-arms `canJump` every frame while paused, `PointerLockControls.js`
+  `onKeyDown` case 32 lacks the `scope.enabled` gate the mousedown/contextmenu
+  fixes already have); resume flings the player into the void.
+- **GGJ2015** — HIGH, still open: touch-drag reads `e.screenX` (undefined on
+  `TouchEvent`) → `positionRatio` NaN → game unwinnable on all touch devices
+  (`src/scripts/makeSceneMovable.js:16,27-28`). Highest user impact overall, but
+  GGJ2015 is the best-covered game (5 specs) so the selection rule deferred it.
+- **Sandpiper** — NEW MEDIUM: engine-tier load failures (engine JS / wasm /
+  dmloader) strand the player on a silent "Starting…" splash; the prior failure-UX
+  fix only covered `archive/*` (`index.html` load_engine has no `onerror`).
+- **LegendaryJourney** — clean in committed code (dirty tree with orphaned feature
+  work left untouched); no fix candidate.
+
 ## 2026-07-17 — recon only, no fix (run seeds `77030100`–`77033000`)
 
 Fan-out recon across the five games. GameLand was **not** this run's fix target —
