@@ -571,3 +571,159 @@ mobile 375×812 resize. No console errors or unhandled rejections post-fix.
   with a fresh CLS check, not folded into this fix.
 - `install-screen` is a no-exit terminal state (only reachable on non-installed
   iOS Safari); intended as the "Add to Home Screen" gate, low severity.
+
+---
+
+## 2026-07-17 (run 2) — RECON ONLY (no code fix) — game2 NaN phantom-clear
+
+**Not this run's fix target.** 2014-7DFPS won selection (fewest regression specs:
+2 vs this repo's 12) and was fixed/gated/pushed instead. This run touched **only
+this ledger** — no source, no spec; all probes were throwaway specs inside the
+repo tree, deleted afterwards. Baseline `npx playwright test` **23 passed** before
+and after, so every finding below is attributable to code, not a red baseline.
+
+**Seeds this run:** `77173001` (deep-play RNG), `77173107`/`77173211` (desktop
+1280x800 fuzz), `77173319`/`77173427` (mobile 375x812 fuzz), `77173535`
+(showScreen storm), `77173643` (resize storm), `77173751` (load-race/persistence).
+Per-game fuzz sub-seeds = seed + gameIndex*13 (max `77173250`). Range
+77173000-77173999; prior runs used `2026071203` etc.
+
+**Play depth:** all **13** games driven through a real round (start → play →
+game-over → restart → BACK), plus 260 fuzz steps/game at both viewports.
+Exception: tile-2048 got 532 clean moves but its over-state was not observed —
+any post-over key resets instantly, so a between-moves detector can miss it.
+**Driver limitation, no defect implied.**
+
+**Spec coverage gap (unchanged):** `bear-hunt`, `game3`, `astro-drift` still have
+no dedicated spec (10 of 13 do). Note `game2` *has* a spec, but it does not touch
+the restart window below — coverage existing is not coverage of the bug.
+
+---
+
+### DEFECT (MEDIUM, confirmed) — game2 (Block Breaker): a NaN ball silently phantom-clears a whole level and corrupts the saved high score. **LEADING CANDIDATE FOR THE NEXT FIX RUN.**
+
+**Root cause — `s.bx`/`s.by` have no initializer on any reset path.**
+* `reset()` (`scripts/screen.game2.js:69-77`) builds a fresh `s` with `px` and
+  `launched` but **never sets `bx`/`by`**.
+* `stick()` (`:67`) sets `launched=false, vx=0, vy=0` — **also not `bx`/`by`**.
+* `launch()` (`:81-86`) sets `launched=true, vx, vy` — **also not `bx`/`by`**.
+* The **only** initializer is `update()`'s `!launched` branch (`:144`):
+  `if (!s.launched) { s.bx = s.px; s.by = s.py - s.r - 1; return; }`.
+
+So if `launch()` runs in the window between `reset()` and that fresh state's first
+rAF tick, it flips `launched` **before** `:144` ever runs — the initializer is
+skipped forever, and `moveBall()` (`:129`) does `undefined += vx*dt/steps` →
+**`bx`/`by` = NaN with velocities still finite**.
+
+**Why it clears the board.** `brickHit()`'s rejection test is
+`if (dx*dx + dy*dy > s.r*s.r) { continue; }` (`:113`). With NaN, that comparison
+is **false** — so the guard never fires and the loop kills **the first alive brick
+every frame**. Closure dump one frame in: `score:50, alive:69, vx:-26.4,
+vy:-479.5, px:1175`, everything else finite. NaN draws stop at exactly 69-70
+frames = the 70-brick board (14x5): the level **silently self-clears** (~2100
+unearned points at 1280x800, plus a level-up), then `nextLevel()` → `stick()` →
+and `:144` finally restores a finite ball into level 2. **Zero pageerrors, zero
+console errors** — the ball is simply invisible (`arc(NaN,NaN,11)` from `render`
+`:168`) and the score is silently wrong. It persists to `gameland.hi.game2` at
+the next real game over (`:92`).
+
+**Repro (both on the unmodified build, deterministic).**
+* (a) **double-tap restart on the game-over screen** — two pointerdowns inside one
+  ~16ms frame: the first `primary()` → `reset()`, the second → `launch()` →
+  0 → 70 NaN draws. Real-player reachable by mashing Space/click/tap on game-over.
+* (b) a single pointerdown injected between a re-entry `showScreen("game2")` reset
+  and the next frame.
+
+**Fix shape.** Initialize `bx`/`by` in `stick()` — it is called by **both**
+`reset()` and the life-loss path, so it is the one chokepoint that covers every
+way the ball is re-stuck. One line.
+
+**Budget note — the agent's constraint claim was WRONG, do not act on it.** It
+reported "~0.5KB headroom, 9.97/10KB shared pool". That pool no longer exists:
+`.size-limit.json` moved to **per-game sub-budgets**, and Block Breaker is
+measured on its own at **3.46 kB of a 4.5 kB brotli limit** (verified this run via
+`npm run size`) — **over 1 kB of headroom**. A one-line fix is nowhere near the
+budget.
+
+**Regression test design.** Drive `showScreen("game2")`, then dispatch
+`pointerdown` **before** yielding a frame (or two pointerdowns within one frame on
+the game-over screen); assert `Number.isFinite` on the ball across the next ~80
+frames, and assert `alive` does **not** collapse to 0 without paddle contact.
+Assert on the closure state, not pixels — the ball is invisible either way, so a
+pixel probe cannot distinguish the bug from a clean launch.
+
+---
+
+### DEFECT (MEDIUM-LOW, confirmed) — `showScreen`: last-*resolved* wins, not last-*requested*
+
+`scripts/game.js:49-61` has no request sequencing. Measured with a synthetic 500ms
+load latency: click TETRA (first-visit load delayed), click SNAKE 80ms later →
+snake activates and plays, then tetra's late load **resolves and silently steals
+the screen** (final active = `tetra`). Snake's loop halts cleanly — no dual loop,
+no errors — but the player watches their chosen game get yanked. **First visit per
+game only** (the loader caches afterwards), which is why the 25-call out-of-order
+storm below did *not* catch it: warmed screens resolve instantly.
+*Fix shape:* a monotonic request token in `showScreen`; drop stale resolutions.
+
+### DEFECT (LOW-MEDIUM, confirmed) — game4 (Tower Stack): mid-run shrink hides the tower and forces a crash
+
+Blocks/slab store **absolute pixel x** (`scripts/screen.game4.js:59,101`); `size()`
+(`:216-220`) recomputes metrics but **never rescales existing geometry**, and the
+slab clamp `hi = W - margin - mv.w` (`:113-114`) goes **negative** when
+`mv.w > W - 2*margin`. 1280 → 375 mid-run: the tower (x ~430-850) is entirely
+off-canvas and the pinned slab can leave the **whole playfield invisible**
+(vivid-pixel count 17125 → 0; another iteration 27237 → 4676 = slab only). The
+next drop then has zero possible overlap → game over, **3/3 deterministic**.
+
+No throw — this is **not** the Road-Cross freeze class (that fix stayed green
+everywhere). Road-cross (cell units) and missile-command (normalized 0..1) already
+solve this class; **game4 predates it** and is the last holdout.
+
+### DEFECT (LOW, confirmed) — snake: a grid-changing resize silently discards the run
+
+`scripts/screen.snake.js:273` — deliberate code. 1280 → 1240 at t~1.2s into a live
+run (cols 40 → 39) → full `reset()` to the idle prompt. Control run persisted its
+length within 6s; the resized run wrote nothing in 7s (snake persists only at
+gameOver). Loop alive, no errors — **pure silent progress loss**, and inconsistent
+with road-cross/tetra/2048, which all survive resize.
+
+### DEFECT (LOW) — throttled best-score writes never flush on BACK/quit
+
+Only death flushes. **CONFIRMED** for two:
+* `dash-run` (`scripts/screen.dash-run.js:79-89`, >=5-pt throttle): writes measured
+  at 5/10/15 on a 481ms-per-5pts cadence; BACK ~300ms after "15" → storage frozen
+  at 15, **~3 best-points dropped**.
+* `tetra` (`scripts/screen.tetra.js:127-133`, >=100 after the first write): drop1
+  persisted 36, drop2 banked >=28 more, no write on drop2/BACK/after — stored best
+  stays **36**.
+
+**INFERENCE (same code shape, NOT probed):** `screen.sky-hopper.js:88-92` (>=5) and
+`screen.star-blaster.js:73-77` (>=20). Do not file these as confirmed without
+measuring them. Nothing flushes on tab close either (no `pagehide` hook).
+*Fix shape:* flush in each BACK handler, or one shared `pagehide` listener.
+
+### Verified CLEAN this run
+
+- **Asset hygiene:** boot + all 13 games + high-scores = 26 unique request paths,
+  all **200**, every path string-matching the dist listing **exact-case** (35
+  files) — no APFS-masked casing bug headed for S3.
+- **NaN/Infinity net** (21 ctx methods, canvas width/height setters, localStorage
+  values) armed in **every** test: zero non-finite anywhere **except** game2 above;
+  all `gameland.hi.*` writes integers.
+- **Fuzz** (4 seeds x 260 steps x 13 games, both viewports): single active screen,
+  live rAF loop, zero console/page errors, zero 404s per game. game2 was the only
+  hit (sub-seed `77173146`).
+- **Races:** 25-call out-of-order `showScreen` storm (8ms spacing, warmed screens)
+  settles on the **last-requested** screen, zero leaked loops (per-screen draw
+  counters frozen for all inactive screens; 0 draws on menu); 8x re-entry spam →
+  exactly 1 canvas.
+- **Resize storm** x12 (375x812 <-> 1280x800) during play on game4/road-cross/
+  astro-drift/tetra/sky-hopper: loops alive, NaN-clean, error-free. **CLS = 0.000**
+  across boot/nav.
+- Restart-after-over works in all 13; best-score persistence survives reload where
+  exercised.
+
+**Not re-reported** (already filed above in this ledger): keyboard trap (BACK
+unreachable in 10/13), mobile 1024px overflow + viewport meta, install-screen
+terminal state. Re-observed and still accurate: per-loaded-game resize canvas
+realloc (latent inefficiency).
