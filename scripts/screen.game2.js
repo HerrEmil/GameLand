@@ -64,20 +64,20 @@ carny.screens["game2"] = (function () {
 
 	function launchSpeed() { return Math.min(H * 1.05, H * 0.6 + (s.level - 1) * H * 0.05); }
 
-	// Seed the ball on the paddle. Called by reset()/nextLevel()/loseLife() after
-	// layout() has set px/py/r, so the ball has finite coords the moment the board
-	// resets — a launch() that lands before the first update() frame (double-tap
-	// "play again", or tapping as the screen re-opens) can no longer read undefined
-	// bx/by and NaN-poison the whole board. update() keeps bx tracking px while the
-	// ball is still stuck.
-	function stick() { s.launched = false; s.vx = 0; s.vy = 0; s.bx = s.px; s.by = s.py - s.r - 1; }
+	// The ball's rest position on the paddle. Seeded by stick() as well as tracked
+	// per-frame by update(), so the ball has finite coords the moment the board
+	// resets — a launch() landing before the first update() frame used to read
+	// undefined bx/by and NaN-poison the whole board.
+	function rest() { s.bx = s.px; s.by = s.py - s.r - 1; }
+
+	function stick() { s.launched = false; s.vx = 0; s.vy = 0; rest(); }
 
 	function reset() {
 		s = {
 			over: false, record: false, score: 0, best: loadHi(), lives: 3, level: 1,
 			bricks: [], left: false, right: false,
 			cols: Math.max(6, Math.min(14, Math.round(W / 86))), rows: 5,
-			px: W / 2, launched: false
+			px: W / 2, launched: false, bx: W / 2, by: 0, vx: 0, vy: 0
 		};
 		buildBricks(); stick();
 	}
@@ -147,7 +147,7 @@ carny.screens["game2"] = (function () {
 		if (s.over) { return; }
 		var dir = (s.right ? 1 : 0) - (s.left ? 1 : 0);
 		if (dir) { s.px = clampX(s.px + dir * W * 1.4 * dt); }
-		if (!s.launched) { s.bx = s.px; s.by = s.py - s.r - 1; return; }
+		if (!s.launched) { rest(); return; }
 		moveBall(dt);
 	}
 

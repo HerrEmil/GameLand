@@ -29,15 +29,17 @@ and banks the unearned points to `gameland.hi.game2` at the next real game over
 draws = board size) and organically under plain spam-click fuzz (60 NaN draws,
 sub-seed `177202`) — **zero console errors either way**, a fully silent corruption.
 
-**Fix.** Seed the ball inside `stick()` — the chokepoint called by `reset()`,
-`nextLevel()`, and `loseLife()`, always after `layout()` has set `px`/`py`/`r`:
-`s.bx = s.px; s.by = s.py - s.r - 1;` (the same rest position `update():144` uses).
-The ball now has finite coords the moment the board resets, so an early `launch()`
-can no longer read `undefined`. `update():144` still tracks `bx` to the paddle
-while the ball is stuck, so pre-launch behavior is unchanged. One line, +0.19 KB
-brotli (Block Breaker 3.46 → 3.65 KB, budget 4.5 KB). Scanned the sibling games:
-game3/game4/dash-run/star-blaster all fully init kinematics in `reset()`; game2 was
-the sole holdout.
+**Fix.** Name the rest position once — `function rest() { s.bx = s.px; s.by = s.py
+- s.r - 1; }` — and call it from both `update()`'s not-launched branch (its only
+previous home) and `stick()`, the chokepoint called by `reset()`, `nextLevel()`,
+and `loseLife()`, always after `layout()` has set `px`/`py`/`r`. The ball now has
+finite coords the moment the board resets, so an early `launch()` can no longer
+read `undefined`, and the rest geometry has a single owner instead of two copies
+to hand-sync. `reset()`'s state literal also declares `bx`/`by`/`vx`/`vy` up front,
+matching the declare-then-recompute pattern every sibling uses (game3, game4,
+road-cross, dash-run, star-blaster, astro-drift): a future missed seed then
+degrades to a stale position the next frame corrects, rather than to permanent
+NaN. Block Breaker 3.46 → 3.6 KB brotli, budget 4.5 KB.
 
 **Regression test.** `regression-game2-uninitialized-ball.spec.ts` (mobile +
 desktop). Gates `requestAnimationFrame` so the launching `pointerdown` lands
@@ -45,6 +47,8 @@ strictly before the first post-reset frame (the only window the bug needs), and 
 `CanvasRenderingContext2D.arc` sentinel flags any non-finite ball draw. Proven
 **RED pre-fix** (`anyNonFinite: true`, both viewports) → **GREEN post-fix**; also
 asserts the ball still renders, in bounds, and actually moves after launch.
+Known coverage gap: only the `reset()` seeding path is exercised — a regression
+in `nextLevel()`/`loseLife()` seeding would not be caught here.
 
 ### Gate (all green)
 

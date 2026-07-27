@@ -21,34 +21,33 @@ import { test, expect, type Page } from "@playwright/test";
 // adding `.active`, so reset() has run) but before any frame has executed, we
 // dispatch the launching pointerdown, then step frames by hand. A
 // CanvasRenderingContext2D.arc sentinel records every ball draw; a non-finite
-// ball position is the defect. Fixed by seeding s.bx/s.by inside stick().
+// ball position is the defect. Fixed by having stick() seed the ball via the
+// shared rest() helper that update()'s not-launched branch also uses.
 
 const INIT = `
 (function () {
   // The ball is the only thing drawn with ctx.arc from a white fill; record
   // every arc so a NaN/Infinity ball position is caught wherever it renders.
-  window.__arcCalls = [];
   var proto = CanvasRenderingContext2D.prototype, origArc = proto.arc;
-  proto.arc = function (x, y, r) {
-    window.__arcCalls.push({
-      x: x, y: y, r: r, fill: String(this.fillStyle),
-      finite: isFinite(x) && isFinite(y) && isFinite(r)
-    });
-    return origArc.apply(this, arguments);
+  var calls = window.__arcCalls = [];
+  proto.arc = function (x, y, r, a0, a1, ccw) {
+    var finite = isFinite(x) && isFinite(y) && isFinite(r);
+    // Always keep a defective draw; cap the healthy ones so the log can't grow
+    // without bound over the page's lifetime.
+    if (!finite || calls.length < 256) {
+      calls.push({ x: x, y: y, r: r, fill: String(this.fillStyle), finite: finite });
+    }
+    return origArc.call(this, x, y, r, a0, a1, ccw);
   };
-  window.__resetArcCalls = function () { window.__arcCalls = []; };
+  window.__resetArcCalls = function () { calls.length = 0; };
 
-  // Manual rAF control so we can act between reset() and the first frame.
-  var realRAF = window.requestAnimationFrame.bind(window), manual = false, queue = [];
-  window.__setManualRAF = function (on) { manual = !!on; };
-  window.requestAnimationFrame = function (cb) {
-    if (manual) { queue.push(cb); return queue.length; }
-    return realRAF(cb);
-  };
+  // Every rAF loop in this app lives inside a game screen, so queueing frames
+  // from page load costs nothing and lets us act between reset() and frame 1.
+  var queue = [];
+  window.requestAnimationFrame = function (cb) { return queue.push(cb); };
   window.__stepFrame = function (ts) {
     var cbs = queue; queue = [];
     for (var i = 0; i < cbs.length; i++) { try { cbs[i](ts); } catch (e) {} }
-    return cbs.length;
   };
 })();
 `;
@@ -74,20 +73,22 @@ for (const vp of [
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await openMenu(page);
 
-    // Gate rAF, then open Block Breaker. run()/begin()/reset() run synchronously
-    // inside showScreen (before `.active` is added), so by the time #game2 is
-    // active the board has been reset but no frame has executed — bx/by are
-    // still uninitialized on the buggy build.
-    await page.evaluate(() => (window as unknown as { __setManualRAF(on: boolean): void }).__setManualRAF(true));
+    // Open Block Breaker. run()/begin()/reset() run synchronously inside
+    // showScreen (before `.active` is added), so by the time #game2 is active
+    // the board has been reset but no frame has executed — bx/by are still
+    // uninitialized on the buggy build.
     await page.locator('#main-menu button[name="game2"]').click();
     await expect(page.locator("#game2")).toHaveClass(/active/);
-    await expect(page.locator("#game2 canvas")).toHaveCount(1);
 
-    // Launch inside the pre-first-frame window: dispatch the pointerdown the
-    // game listens for. Reset the arc log first so we only judge frames from
-    // this launch onward.
-    await page.evaluate(() => {
-      const w = window as unknown as { __resetArcCalls(): void };
+    // Launch inside the pre-first-frame window, then step frames by hand with
+    // realistic timestamps and collect the ball draws. The arc log is cleared
+    // first so we only judge frames from this launch onward.
+    const result = await page.evaluate(() => {
+      const w = window as unknown as {
+        __resetArcCalls(): void;
+        __stepFrame(ts: number): void;
+        __arcCalls: Array<{ x: number; y: number; r: number; fill: string; finite: boolean }>;
+      };
       const cv = document.querySelector<HTMLCanvasElement>("#game2 canvas")!;
       w.__resetArcCalls();
       cv.dispatchEvent(new PointerEvent("pointerdown", {
@@ -95,38 +96,24 @@ for (const vp of [
         clientY: Math.floor(window.innerHeight / 2),
         bubbles: true, cancelable: true,
       }));
-    });
-
-    // Step several frames with realistic timestamps and collect the ball draws.
-    const result = await page.evaluate(() => {
-      const w = window as unknown as {
-        __stepFrame(ts: number): number;
-        __arcCalls: Array<{ x: number; y: number; r: number; fill: string; finite: boolean }>;
-      };
       for (let i = 0; i < 10; i++) { w.__stepFrame(1000 + i * 16); }
       const white = w.__arcCalls.filter((a) => a.fill.toLowerCase() === "#ffffff");
       return {
         anyNonFinite: w.__arcCalls.some((a) => !a.finite),
-        ballDraws: white.length,
-        ballAllFinite: white.every((a) => a.finite),
         ballYs: white.map((a) => a.y),
-        W: window.innerWidth,
         H: window.innerHeight,
       };
     });
 
     // Core invariant: the ball is never rendered at a non-finite position.
     expect(result.anyNonFinite, "ball rendered at a NaN/Infinity position").toBe(false);
-    // The fix seeds the ball rather than removing it: it is still drawn...
-    expect(result.ballDraws).toBeGreaterThan(0);
-    expect(result.ballAllFinite).toBe(true);
-    // ...in bounds, and it genuinely launched (the position changes frame to
-    // frame instead of the board self-clearing under a frozen NaN ball).
-    for (const y of result.ballYs) {
-      expect(y).toBeGreaterThanOrEqual(0);
-      expect(y).toBeLessThanOrEqual(result.H);
-    }
-    expect(new Set(result.ballYs).size, "ball never moved after launch").toBeGreaterThan(1);
+    // The fix seeds the ball rather than removing it: it is still drawn, and it
+    // genuinely launched (the position changes frame to frame instead of the
+    // board self-clearing under a frozen NaN ball).
+    expect(new Set(result.ballYs).size, "ball never drawn, or never moved after launch").toBeGreaterThan(1);
+    // ...and it stays in bounds.
+    expect(Math.min(...result.ballYs), "ball drawn above the board").toBeGreaterThanOrEqual(0);
+    expect(Math.max(...result.ballYs), "ball drawn below the board").toBeLessThanOrEqual(result.H);
 
     expect(pageErrors, pageErrors.join("\n")).toEqual([]);
     expect(consoleErrors, consoleErrors.join("\n")).toEqual([]);
