@@ -77,7 +77,7 @@ carny.screens["game2"] = (function () {
 			over: false, record: false, score: 0, best: loadHi(), lives: 3, level: 1,
 			bricks: [], left: false, right: false,
 			cols: Math.max(6, Math.min(14, Math.round(W / 86))), rows: 5,
-			px: W / 2, launched: false, bx: W / 2, by: 0, vx: 0, vy: 0
+			px: W / 2, launched: false, bx: 0, by: 0, vx: 0, vy: 0
 		};
 		buildBricks(); stick();
 	}

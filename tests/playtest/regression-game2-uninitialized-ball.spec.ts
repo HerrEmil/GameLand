@@ -2,18 +2,10 @@ import { test, expect, type Page } from "@playwright/test";
 
 // Regression: game2 (Block Breaker) — uninitialized ball NaN-poisons the board.
 //
-// `s.bx`/`s.by` were only ever assigned inside update()'s not-launched branch
-// (`if (!s.launched) { s.bx = s.px; s.by = s.py - s.r - 1; return; }`). reset()
-// and stick() never seeded them, so in the window between a reset() and the
-// first update() frame they are `undefined`. If the player launches in that
-// window — double-tapping the "play again" prompt on the game-over screen, or
-// tapping the instant the screen re-opens — update() takes the moveBall()
-// branch instead, does `s.bx += s.vx * dt` on `undefined`, and the ball goes
-// NaN permanently. A NaN ball then satisfies brickHit()'s inverted reject guard
-// (`NaN > r*r` is false), so it silently kills one brick per frame, phantom-
-// clears the level via nextLevel(), and banks an unearned best score. Observed
-// live: 60-69 consecutive `arc(NaN, NaN)` draws (exactly one per brick), zero
-// console errors — a completely silent corruption.
+// reset()/stick() never seeded `s.bx`/`s.by`, so a launch landing between
+// reset() and the first update() frame did `s.bx += s.vx * dt` on `undefined`,
+// NaN-poisoned the ball, and silently phantom-cleared the level (full
+// root-cause narrative: the 2026-07-17 FIX entry in tests/playtest/LEDGER.md).
 //
 // The bug requires the launch to land strictly before the first post-reset
 // frame. We make that deterministic by gating requestAnimationFrame: after the
@@ -32,11 +24,7 @@ const INIT = `
   var calls = window.__arcCalls = [];
   proto.arc = function (x, y, r, a0, a1, ccw) {
     var finite = isFinite(x) && isFinite(y) && isFinite(r);
-    // Always keep a defective draw; cap the healthy ones so the log can't grow
-    // without bound over the page's lifetime.
-    if (!finite || calls.length < 256) {
-      calls.push({ x: x, y: y, r: r, fill: String(this.fillStyle), finite: finite });
-    }
+    calls.push({ x: x, y: y, r: r, fill: String(this.fillStyle), finite: finite });
     return origArc.call(this, x, y, r, a0, a1, ccw);
   };
   window.__resetArcCalls = function () { calls.length = 0; };
@@ -47,16 +35,18 @@ const INIT = `
   window.requestAnimationFrame = function (cb) { return queue.push(cb); };
   window.__stepFrame = function (ts) {
     var cbs = queue; queue = [];
-    for (var i = 0; i < cbs.length; i++) { try { cbs[i](ts); } catch (e) {} }
+    for (var i = 0; i < cbs.length; i++) { cbs[i](ts); }
   };
 })();
 `;
 
-async function openMenu(page: Page): Promise<void> {
+async function openGame2(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("#splash-screen")).toHaveClass(/active/);
   await page.locator("#splash-screen").click();
   await expect(page.locator("#main-menu")).toHaveClass(/active/);
+  await page.locator('#main-menu button[name="game2"]').click();
+  await expect(page.locator("#game2")).toHaveClass(/active/);
 }
 
 for (const vp of [
@@ -71,14 +61,11 @@ for (const vp of [
 
     await page.addInitScript(INIT);
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    await openMenu(page);
-
-    // Open Block Breaker. run()/begin()/reset() run synchronously inside
-    // showScreen (before `.active` is added), so by the time #game2 is active
-    // the board has been reset but no frame has executed — bx/by are still
-    // uninitialized on the buggy build.
-    await page.locator('#main-menu button[name="game2"]').click();
-    await expect(page.locator("#game2")).toHaveClass(/active/);
+    // run()/begin()/reset() run synchronously inside showScreen (before
+    // `.active` is added), so by the time #game2 is active the board has been
+    // reset but no frame has executed — bx/by are still uninitialized on the
+    // buggy build.
+    await openGame2(page);
 
     // Launch inside the pre-first-frame window, then step frames by hand with
     // realistic timestamps and collect the ball draws. The arc log is cleared
