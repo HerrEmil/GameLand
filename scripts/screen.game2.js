@@ -64,10 +64,8 @@ carny.screens["game2"] = (function () {
 
 	function launchSpeed() { return Math.min(H * 1.05, H * 0.6 + (s.level - 1) * H * 0.05); }
 
-	// The ball's rest position on the paddle. Seeded by stick() as well as tracked
-	// per-frame by update(), so the ball has finite coords the moment the board
-	// resets — a launch() landing before the first update() frame used to read
-	// undefined bx/by and NaN-poison the whole board.
+	// Parks the ball on the paddle. stick() seeds this at reset because a launch
+	// can land before the first update() frame runs.
 	function rest() { s.bx = s.px; s.by = s.py - s.r - 1; }
 
 	function stick() { s.launched = false; s.vx = 0; s.vy = 0; rest(); }

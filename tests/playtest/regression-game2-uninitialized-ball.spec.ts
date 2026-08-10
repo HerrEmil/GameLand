@@ -23,8 +23,7 @@ const INIT = `
   var proto = CanvasRenderingContext2D.prototype, origArc = proto.arc;
   var calls = window.__arcCalls = [];
   proto.arc = function (x, y, r, a0, a1, ccw) {
-    var finite = isFinite(x) && isFinite(y) && isFinite(r);
-    calls.push({ x: x, y: y, r: r, fill: String(this.fillStyle), finite: finite });
+    calls.push({ y: y, fill: String(this.fillStyle), finite: isFinite(x) && isFinite(y) && isFinite(r) });
     return origArc.call(this, x, y, r, a0, a1, ccw);
   };
   window.__resetArcCalls = function () { calls.length = 0; };
@@ -61,10 +60,6 @@ for (const vp of [
 
     await page.addInitScript(INIT);
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    // run()/begin()/reset() run synchronously inside showScreen (before
-    // `.active` is added), so by the time #game2 is active the board has been
-    // reset but no frame has executed — bx/by are still uninitialized on the
-    // buggy build.
     await openGame2(page);
 
     // Launch inside the pre-first-frame window, then step frames by hand with
@@ -74,7 +69,7 @@ for (const vp of [
       const w = window as unknown as {
         __resetArcCalls(): void;
         __stepFrame(ts: number): void;
-        __arcCalls: Array<{ x: number; y: number; r: number; fill: string; finite: boolean }>;
+        __arcCalls: Array<{ y: number; fill: string; finite: boolean }>;
       };
       const cv = document.querySelector<HTMLCanvasElement>("#game2 canvas")!;
       w.__resetArcCalls();
