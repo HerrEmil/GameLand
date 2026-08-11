@@ -64,10 +64,9 @@ carny.screens["game2"] = (function () {
 
 	function launchSpeed() { return Math.min(H * 1.05, H * 0.6 + (s.level - 1) * H * 0.05); }
 
-	// Parks the ball on the paddle. stick() seeds this at reset because a launch
-	// can land before the first update() frame runs.
 	function rest() { s.bx = s.px; s.by = s.py - s.r - 1; }
 
+	// rest() here too: a launch can land before the first update() frame runs.
 	function stick() { s.launched = false; s.vx = 0; s.vy = 0; rest(); }
 
 	function reset() {
