@@ -669,7 +669,10 @@ the restart window below — coverage existing is not coverage of the bug.
 
 ---
 
-### DEFECT (MEDIUM, confirmed) — game2 (Block Breaker): a NaN ball silently phantom-clears a whole level and corrupts the saved high score. **LEADING CANDIDATE FOR THE NEXT FIX RUN.**
+### DEFECT (MEDIUM, confirmed) — game2 (Block Breaker): a NaN ball silently phantom-clears a whole level and corrupts the saved high score. **FIXED — see the 2026-07-17 FIX entry at the top of this file for the root cause, the fix and its regression spec.**
+
+<!--
+Original recon write-up, kept for provenance. Superseded by the FIX entry.
 
 **Root cause — `s.bx`/`s.by` have no initializer on any reset path.**
 * `reset()` (`scripts/screen.game2.js:69-77`) builds a fresh `s` with `px` and
@@ -720,6 +723,7 @@ the game-over screen); assert `Number.isFinite` on the ball across the next ~80
 frames, and assert `alive` does **not** collapse to 0 without paddle contact.
 Assert on the closure state, not pixels — the ball is invisible either way, so a
 pixel probe cannot distinguish the bug from a clean launch.
+-->
 
 ---
 
