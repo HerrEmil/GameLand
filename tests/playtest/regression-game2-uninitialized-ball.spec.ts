@@ -6,15 +6,13 @@ import { test, expect, type Page } from "@playwright/test";
 // reset() and the first update() frame did `s.bx += s.vx * dt` on `undefined`,
 // NaN-poisoned the ball, and silently phantom-cleared the level (full
 // root-cause narrative: the 2026-07-17 FIX entry in tests/playtest/LEDGER.md).
+// Fixed by having stick() seed the ball via the shared rest() helper that
+// update()'s not-launched branch also uses.
 //
-// The bug requires the launch to land strictly before the first post-reset
-// frame. We make that deterministic by gating requestAnimationFrame: after the
-// screen is active (showScreen calls run()/begin()/reset() synchronously before
-// adding `.active`, so reset() has run) but before any frame has executed, we
-// dispatch the launching pointerdown, then step frames by hand. A
-// CanvasRenderingContext2D.arc sentinel records every ball draw; a non-finite
-// ball position is the defect. Fixed by having stick() seed the ball via the
-// shared rest() helper that update()'s not-launched branch also uses.
+// Reproducing it needs the launch to land strictly before the first post-reset
+// frame. showScreen calls run()/begin()/reset() synchronously before adding
+// `.active`, so once `#game2` is active reset() has run and — with rAF gated by
+// INIT below — no frame has.
 
 const INIT = `
 (function () {
@@ -61,9 +59,8 @@ for (const vp of [
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await openGame2(page);
 
-    // Launch inside the pre-first-frame window, then step frames by hand with
-    // realistic timestamps and collect the ball draws. Nothing has drawn yet:
-    // rAF is stubbed from page load and the menu screens are DOM-only.
+    // Launch inside the pre-first-frame window, then step frames by hand at a
+    // realistic 16 ms cadence and collect the ball draws.
     const result = await page.evaluate(() => {
       const w = window as unknown as {
         __stepFrame(ts: number): void;
@@ -88,7 +85,7 @@ for (const vp of [
     // The fix seeds the ball rather than removing it: it is still drawn, and it
     // genuinely launched (the position changes frame to frame instead of the
     // board self-clearing under a frozen NaN ball).
-    expect(new Set(result.ballYs).size, "ball never drawn, or never moved after launch").toBeGreaterThan(1);
+    expect(new Set(result.ballYs).size, "ball (the #ffffff arc) never drawn, or never moved after launch").toBeGreaterThan(1);
 
     expect(pageErrors, pageErrors.join("\n")).toEqual([]);
     expect(consoleErrors, consoleErrors.join("\n")).toEqual([]);
