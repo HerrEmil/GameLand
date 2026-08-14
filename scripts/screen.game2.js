@@ -64,6 +64,7 @@ carny.screens["game2"] = (function () {
 
 	function launchSpeed() { return Math.min(H * 1.05, H * 0.6 + (s.level - 1) * H * 0.05); }
 
+	// Resting position on the paddle; only valid once layout() has set py/r.
 	function rest() { s.bx = s.px; s.by = s.py - s.r - 1; }
 
 	// rest() here too: a launch can land before the first update() frame runs.

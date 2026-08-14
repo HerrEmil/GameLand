@@ -73,7 +73,7 @@ for (const vp of [
         bubbles: true, cancelable: true,
       }));
       for (let i = 0; i < 10; i++) { w.__stepFrame(1000 + i * 16); }
-      const white = w.__arcCalls.filter((a) => a.fill.toLowerCase() === "#ffffff");
+      const white = w.__arcCalls.filter((a) => a.fill === "#ffffff");
       return {
         anyNonFinite: w.__arcCalls.some((a) => !a.finite),
         ballYs: white.map((a) => a.y),
@@ -84,8 +84,10 @@ for (const vp of [
     expect(result.anyNonFinite, "ball rendered at a NaN/Infinity position").toBe(false);
     // The fix seeds the ball rather than removing it: it is still drawn, and it
     // genuinely launched (the position changes frame to frame instead of the
-    // board self-clearing under a frozen NaN ball).
-    expect(new Set(result.ballYs).size, "ball (the #ffffff arc) never drawn, or never moved after launch").toBeGreaterThan(1);
+    // board self-clearing under a frozen NaN ball). Split so that recolouring
+    // the ball reads as "never drawn" rather than "never moved".
+    expect(result.ballYs.length, "ball (the #ffffff arc) was never drawn").toBeGreaterThan(0);
+    expect(new Set(result.ballYs).size, "ball never moved after launch").toBeGreaterThan(1);
 
     expect(pageErrors, pageErrors.join("\n")).toEqual([]);
     expect(consoleErrors, consoleErrors.join("\n")).toEqual([]);
